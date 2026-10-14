@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>フローチャート作成アプリ</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +20,7 @@
             font-family: 'Noto Sans JP', 'Inter', sans-serif;
             user-select: none;
             -webkit-user-select: none;
+            touch-action: none; /* タッチ時のブラウザスクロールを防止 */
         }
         /* Custom scrollbar styling */
         ::-webkit-scrollbar {
@@ -123,7 +124,7 @@
         <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-10 shrink-0 shadow-sm">
             <div class="p-3 border-b border-slate-100 bg-slate-50">
                 <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">JIS 記号パレット</h2>
-                <p class="text-[11px] text-slate-400 mt-0.5">クリックまたはドラッグで追加</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">タップまたはドラッグで追加</p>
             </div>
             
             <div class="flex-1 overflow-y-auto p-3 space-y-2.5" id="palette-container">
@@ -223,6 +224,7 @@
             panStart: { x: 0, y: 0 },
             isConnecting: false,
             connectStart: null,
+            pinchDist: 0,
 
             history: [],
             historyIndex: -1,
@@ -600,8 +602,9 @@
 
                 g.appendChild(textGroup);
 
-                g.onmousedown = (e) => {
-                    if (e.button !== 0) return;
+                const handlePointerDown = (e) => {
+                    const isTouch = e.type === 'touchstart';
+                    if (!isTouch && e.button !== 0) return;
                     e.stopPropagation();
 
                     store.selectedNodeId = node.id;
@@ -609,14 +612,18 @@
                     renderCanvas();
                     updateInspector();
 
-                    const startMouseX = e.clientX;
-                    const startMouseY = e.clientY;
+                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+                    const startMouseX = clientX;
+                    const startMouseY = clientY;
                     const origX = node.x;
                     const origY = node.y;
 
-                    function onMouseMove(me) {
-                        const dx = (me.clientX - startMouseX) / store.zoom;
-                        const dy = (me.clientY - startMouseY) / store.zoom;
+                    function onMove(me) {
+                        const curX = me.type.startsWith('touch') ? me.touches[0].clientX : me.clientX;
+                        const curY = me.type.startsWith('touch') ? me.touches[0].clientY : me.clientY;
+                        const dx = (curX - startMouseX) / store.zoom;
+                        const dy = (curY - startMouseY) / store.zoom;
                         let newX = origX + dx;
                         let newY = origY + dy;
 
@@ -630,15 +637,22 @@
                         renderCanvas();
                     }
 
-                    function onMouseUp() {
-                        window.removeEventListener('mousemove', onMouseMove);
-                        window.removeEventListener('mouseup', onMouseUp);
+                    function onUp() {
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                        window.removeEventListener('touchmove', onMove);
+                        window.removeEventListener('touchend', onUp);
                         store.saveState();
                     }
 
-                    window.addEventListener('mousemove', onMouseMove);
-                    window.addEventListener('mouseup', onMouseUp);
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                    window.addEventListener('touchmove', onMove, { passive: false });
+                    window.addEventListener('touchend', onUp);
                 };
+
+                g.onmousedown = handlePointerDown;
+                g.ontouchstart = handlePointerDown;
 
                 layer.appendChild(g);
             });
@@ -750,7 +764,7 @@
                     g.appendChild(dot);
                     g.setAttribute('class', 'group');
 
-                    g.onmousedown = (e) => {
+                    const handleAnchorStart = (e) => {
                         e.stopPropagation();
                         e.preventDefault();
 
@@ -761,9 +775,12 @@
                         tempPath.classList.remove('hidden');
 
                         function onConnectingMove(me) {
+                            const isTouch = me.type.startsWith('touch');
+                            const clientX = isTouch ? me.touches[0].clientX : me.clientX;
+                            const clientY = isTouch ? me.touches[0].clientY : me.clientY;
                             const rect = document.getElementById('canvas-container').getBoundingClientRect();
-                            const currentX = (me.clientX - rect.left - store.panX) / store.zoom;
-                            const currentY = (me.clientY - rect.top - store.panY) / store.zoom;
+                            const currentX = (clientX - rect.left - store.panX) / store.zoom;
+                            const currentY = (clientY - rect.top - store.panY) / store.zoom;
 
                             tempPath.setAttribute('d', `M ${coord.x} ${coord.y} L ${currentX} ${currentY}`);
                         }
@@ -771,13 +788,19 @@
                         function onConnectingUp(me) {
                             window.removeEventListener('mousemove', onConnectingMove);
                             window.removeEventListener('mouseup', onConnectingUp);
+                            window.removeEventListener('touchmove', onConnectingMove);
+                            window.removeEventListener('touchend', onConnectingUp);
 
                             tempPath.classList.add('hidden');
                             store.isConnecting = false;
 
+                            const isTouch = me.type.startsWith('touch');
+                            const clientX = isTouch ? (me.changedTouches ? me.changedTouches[0].clientX : 0) : me.clientX;
+                            const clientY = isTouch ? (me.changedTouches ? me.changedTouches[0].clientY : 0) : me.clientY;
+
                             const rect = document.getElementById('canvas-container').getBoundingClientRect();
-                            const dropX = (me.clientX - rect.left - store.panX) / store.zoom;
-                            const dropY = (me.clientY - rect.top - store.panY) / store.zoom;
+                            const dropX = (clientX - rect.left - store.panX) / store.zoom;
+                            const dropY = (clientY - rect.top - store.panY) / store.zoom;
 
                             const target = findNearestAnchor(dropX, dropY, node.id);
                             if (target) {
@@ -797,7 +820,12 @@
 
                         window.addEventListener('mousemove', onConnectingMove);
                         window.addEventListener('mouseup', onConnectingUp);
+                        window.addEventListener('touchmove', onConnectingMove, { passive: false });
+                        window.addEventListener('touchend', onConnectingUp);
                     };
+
+                    g.onmousedown = handleAnchorStart;
+                    g.ontouchstart = handleAnchorStart;
 
                     layer.appendChild(g);
                 });
@@ -1078,28 +1106,68 @@
                 renderCanvas();
             }, { passive: false });
 
+            const startPan = (clientX, clientY) => {
+                store.isPanning = true;
+                store.panStart = { x: clientX - store.panX, y: clientY - store.panY };
+                store.selectedNodeId = null;
+                store.selectedEdgeId = null;
+                renderCanvas();
+                updateInspector();
+            };
+
             container.onmousedown = (e) => {
                 if (e.target === container || e.target.tagName === 'svg' || e.button === 1) {
-                    store.isPanning = true;
-                    store.panStart = { x: e.clientX - store.panX, y: e.clientY - store.panY };
-                    store.selectedNodeId = null;
-                    store.selectedEdgeId = null;
-                    renderCanvas();
-                    updateInspector();
+                    startPan(e.clientX, e.clientY);
                 }
             };
 
-            window.addEventListener('mousemove', (e) => {
+            container.ontouchstart = (e) => {
+                if (e.touches.length === 1 && (e.target === container || e.target.tagName === 'svg')) {
+                    startPan(e.touches[0].clientX, e.touches[0].clientY);
+                } else if (e.touches.length === 2) {
+                    store.isPanning = false;
+                    store.pinchDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            };
+
+            const handlePointerMove = (e) => {
+                const isTouch = e.type.startsWith('touch');
+                if (isTouch && e.touches.length === 2) {
+                    const newDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (store.pinchDist > 0) {
+                        const factor = newDist / store.pinchDist;
+                        store.zoom = Math.min(Math.max(store.zoom * factor, 0.3), 3.0);
+                        renderCanvas();
+                    }
+                    store.pinchDist = newDist;
+                    return;
+                }
+
                 if (store.isPanning) {
-                    store.panX = e.clientX - store.panStart.x;
-                    store.panY = e.clientY - store.panStart.y;
+                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+                    store.panX = clientX - store.panStart.x;
+                    store.panY = clientY - store.panStart.y;
                     renderCanvas();
                 }
-            });
+            };
 
-            window.addEventListener('mouseup', () => {
+            window.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('touchmove', handlePointerMove, { passive: false });
+
+            const handlePointerEnd = () => {
                 store.isPanning = false;
-            });
+                store.pinchDist = 0;
+            };
+
+            window.addEventListener('mouseup', handlePointerEnd);
+            window.addEventListener('touchend', handlePointerEnd);
 
             container.addEventListener('dragover', (e) => e.preventDefault());
             container.addEventListener('drop', (e) => {
