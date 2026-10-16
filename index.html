@@ -64,6 +64,12 @@
                 フローチャート作成アプリ
             </div>
             <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-medium border border-indigo-100">JIS X 0121 準拠</span>
+            
+            <!-- Learning Guide Trigger Button -->
+            <button id="btn-open-guide" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                学習ガイド
+            </button>
         </div>
 
         <!-- Toolbar Actions -->
@@ -206,6 +212,92 @@
             <div class="flex justify-end gap-2 pt-2">
                 <button id="modal-btn-cancel" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">キャンセル</button>
                 <button id="modal-btn-confirm" class="px-3 py-1.5 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Learning Guide Modal Dialog -->
+    <div id="guide-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </span>
+                    <h3 class="text-sm font-bold text-slate-800">フローチャート書き方講座 (JIS規格対応)</h3>
+                </div>
+                <button id="guide-modal-close" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-600 leading-relaxed">
+                <!-- Section 1 -->
+                <section class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-900 border-b border-indigo-100 pb-1 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        1. アルゴリズムの3大構造（基本の流れ）
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-bold text-indigo-700 block">順次 (じゅんじ)</span>
+                            <p class="text-[11px] text-slate-500">上から下へ順番に1つずつ処理を実行する基本の流れです。</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-bold text-amber-700 block">分岐 (ぶんき)</span>
+                            <p class="text-[11px] text-slate-500">「条件判断（ひし形）」を使い、YES / NO で進む道を分けます。</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-bold text-emerald-700 block">反復 (はんぷく)</span>
+                            <p class="text-[11px] text-slate-500">「ループ開始/終了」の記号で挟み、同じ処理を繰り返します。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2 -->
+                <section class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-900 border-b border-indigo-100 pb-1 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        2. よく使うJIS記号とその意味
+                    </h4>
+                    <div class="space-y-2 pt-1">
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                            <span class="px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-[10px] w-24 text-center">端子</span>
+                            <span>フローの<strong>「開始」</strong>と<strong>「終了」</strong>を示します。1つの流れに必ず各1個置きます。</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                            <span class="px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-[10px] w-24 text-center">処理</span>
+                            <span>計算や代入など、具体的に行うアクション・操作を書きます。</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                            <span class="px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-[10px] w-24 text-center">判断</span>
+                            <span>条件分岐を行います。伸びる線には必ず「YES」「NO」を明記します。</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                            <span class="px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-[10px] w-24 text-center">ループ開始/終了</span>
+                            <span>繰り返し処理の範囲を上と下で挟んで囲みます。</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3 -->
+                <section class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-900 border-b border-indigo-100 pb-1 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        3. 正しくきれいな配置のルール
+                    </h4>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                        <li><strong>流れは上から下、左から右:</strong> 原則として上から下に進むように配置します。</li>
+                        <li><strong>直線・直角でつなぐ:</strong> 線を斜めに引かず、直角（折れ線）でつなぐと綺麗で見やすくなります。</li>
+                        <li><strong>分岐ラベルを忘れずに:</strong> ひし形から出る線を選択し、右側のプロパティから YES/NO の文字を入れます。</li>
+                    </ul>
+                </section>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+                <button id="guide-modal-btn-close" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition">
+                    閉じる
+                </button>
             </div>
         </div>
     </div>
@@ -1376,6 +1468,12 @@
             document.getElementById('btn-select-all').onclick = () => store.selectAll();
             document.getElementById('btn-copy').onclick = () => store.copySelected();
             document.getElementById('btn-paste').onclick = () => store.pasteClipboard();
+
+            // Learning Guide Modal Operations
+            const guideModal = document.getElementById('guide-modal');
+            document.getElementById('btn-open-guide').onclick = () => guideModal.classList.remove('hidden');
+            document.getElementById('guide-modal-close').onclick = () => guideModal.classList.add('hidden');
+            document.getElementById('guide-modal-btn-close').onclick = () => guideModal.classList.add('hidden');
 
             document.getElementById('btn-zoom-in').onclick = () => {
                 store.zoom = Math.min(store.zoom * 1.15, 3.0);
