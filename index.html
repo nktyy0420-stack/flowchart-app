@@ -1,288 +1,1633 @@
-<!-- View Controls -->
-    <button id="btn-zoom-in" title="拡大 (+)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
-    </button>
-    <button id="btn-zoom-out" title="縮小 (-)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
-    </button>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>フローチャート作成アプリ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans JP & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .canvas-bg {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
+            background-size: 20px 20px;
+        }
+        .canvas-bg.no-grid {
+            background-image: none;
+        }
+        .selection-box {
+            fill: rgba(59, 130, 246, 0.12);
+            stroke: #3b82f6;
+            stroke-width: 1.5;
+            stroke-dasharray: 4 4;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen w-screen overflow-hidden flex flex-col">
 
-    <div class="h-5 w-px bg-slate-200 mx-1"></div>
-
-    <!-- Grid Toggle -->
-    <button id="btn-toggle-grid" title="グリッド切替" class="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-    </button>
-
-    <div class="h-5 w-px bg-slate-200 mx-1"></div>
-
-    <!-- Clear Canvas -->
-    <button id="btn-clear" title="キャンバスクリア" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-    </button>
-
-    <!-- File IO -->
-    <div class="flex items-center gap-1.5 ml-2">
-        <span id="autosave-status" class="text-[11px] text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/60 flex items-center gap-1 font-medium transition-all duration-200">
-            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-            自動保存済み
-        </span>
-
-        <button id="btn-export-json" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
-            名前を付けて保存
-        </button>
-        <label id="btn-import-json" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition cursor-pointer">
-            ファイルを開く
-            <input type="file" id="file-input-json" accept=".json" class="hidden">
-        </label>
-        <button id="btn-export-png" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-medium transition shadow-sm flex items-center gap-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-            PNG出力
-        </button>
-    </div>
-</div>
-</header>
-
-<!-- Main Content Area -->
-<div class="flex-1 flex overflow-hidden relative min-h-0">
-    
-    <!-- Left Sidebar: JIS Node Palette -->
-    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-10 shrink-0 shadow-sm">
-        <div class="p-3 border-b border-slate-100 bg-slate-50">
-            <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">JIS 記号パレット</h2>
-            <p class="text-[11px] text-slate-400 mt-0.5">タップまたはドラッグで追加</p>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto p-3 space-y-2.5" id="palette-container">
-            <!-- Palette items will be generated by JS -->
-        </div>
-    </aside>
-
-    <!-- Center Workspace / Canvas -->
-    <main id="canvas-container" class="flex-1 relative overflow-hidden canvas-bg cursor-grab active:cursor-grabbing select-none">
-        
-        <!-- Floating Navigation Controls overlay -->
-        <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 rounded-lg p-1.5 shadow-md flex items-center gap-1 z-10">
-            <span id="zoom-level-text" class="text-xs font-mono font-medium text-slate-600 px-2">100%</span>
-        </div>
-
-        <!-- SVG Render Canvas -->
-        <svg id="svg-canvas" class="w-full h-full absolute inset-0">
-            <defs>
-                <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e293b"/>
-                </marker>
-                <marker id="arrowhead-selected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6"/>
-                </marker>
-            </defs>
+    <!-- Top Header / Toolbar -->
+    <header class="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shadow-sm z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg font-bold text-sm tracking-wide shadow-sm flex items-center gap-1.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                フローチャート作成アプリ
+            </div>
+            <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-medium border border-indigo-100">JIS X 0121 準拠</span>
             
-            <g id="viewport-group">
-                <!-- Layer 1: Edges / Connection Lines -->
-                <g id="edges-layer"></g>
-                <!-- Layer 2: Temporary Connecting Line while dragging -->
-                <path id="temp-edge-path" d="" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,4" class="hidden"></path>
-                <!-- Layer 3: Nodes -->
-                <g id="nodes-layer"></g>
-                <!-- Layer 4: Interactive Anchor Highlights -->
-                <g id="anchors-layer"></g>
-                <!-- Layer 5: Selection Box (Rubberband) -->
-                <rect id="selection-box" class="selection-box hidden" x="0" y="0" width="0" height="0"></rect>
-            </g>
-        </svg>
-    </main>
-
-    <!-- Right Inspector Sidebar -->
-    <aside class="w-72 bg-white border-l border-slate-200 flex flex-col z-10 shrink-0 shadow-sm" id="inspector-panel">
-        <div class="p-3 border-b border-slate-100 bg-slate-50">
-            <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">プロパティ</h2>
-            <p class="text-[11px] text-slate-400 mt-0.5">選択された要素の編集</p>
+            <!-- Learning Guide Trigger Button -->
+            <button id="btn-open-guide" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                学習ガイド
+            </button>
         </div>
+
+        <!-- Toolbar Actions -->
+        <div class="flex items-center gap-1.5">
+            <!-- Undo / Redo -->
+            <button id="btn-undo" title="元に戻す (Ctrl+Z)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition disabled:opacity-40 disabled:hover:bg-transparent">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+            </button>
+            <button id="btn-redo" title="やり直し (Ctrl+Y)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition disabled:opacity-40 disabled:hover:bg-transparent">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"/></svg>
+            </button>
+
+            <div class="h-5 w-px bg-slate-200 mx-1"></div>
+
+            <!-- Edit Operations: Select All, Copy, Paste -->
+            <button id="btn-select-all" title="全選択 (Ctrl+A)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+                全選択
+            </button>
+            <button id="btn-copy" title="コピー (Ctrl+C)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+                コピー
+            </button>
+            <button id="btn-paste" title="貼り付け (Ctrl+V)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+                複製・ペースト
+            </button>
+
+            <div class="h-5 w-px bg-slate-200 mx-1"></div>
+
+            <!-- View Controls -->
+            <button id="btn-zoom-in" title="拡大 (+)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+            </button>
+            <button id="btn-zoom-out" title="縮小 (-)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
+            </button>
+
+            <div class="h-5 w-px bg-slate-200 mx-1"></div>
+
+            <!-- Grid Toggle -->
+            <button id="btn-toggle-grid" title="グリッド切替" class="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            </button>
+
+            <div class="h-5 w-px bg-slate-200 mx-1"></div>
+
+            <!-- Clear Canvas -->
+            <button id="btn-clear" title="キャンバスクリア" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+
+            <!-- File IO -->
+            <div class="flex items-center gap-1.5 ml-2">
+                <span id="autosave-status" class="text-[11px] text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/60 flex items-center gap-1 font-medium transition-all duration-200">
+                    <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    自動保存済み
+                </span>
+
+                <button id="btn-export-json" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+                    名前を付けて保存
+                </button>
+                <label id="btn-import-json" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition cursor-pointer">
+                    ファイルを開く
+                    <input type="file" id="file-input-json" accept=".json" class="hidden">
+                </label>
+                <button id="btn-export-png" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-medium transition shadow-sm flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    PNG出力
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden relative min-h-0">
         
-        <div class="flex-1 overflow-y-auto p-4 space-y-5" id="inspector-content">
-            <!-- Inspector form dynamically rendered by JS -->
+        <!-- Left Sidebar: JIS Node Palette -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-10 shrink-0 shadow-sm">
+            <div class="p-3 border-b border-slate-100 bg-slate-50">
+                <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">JIS 記号パレット</h2>
+                <p class="text-[11px] text-slate-400 mt-0.5">タップまたはドラッグで追加</p>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-3 space-y-2.5" id="palette-container">
+                <!-- Palette items will be generated by JS -->
+            </div>
+        </aside>
+
+        <!-- Center Workspace / Canvas -->
+        <main id="canvas-container" class="flex-1 relative overflow-hidden canvas-bg cursor-grab active:cursor-grabbing select-none">
+            
+            <!-- Floating Navigation Controls overlay -->
+            <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 rounded-lg p-1.5 shadow-md flex items-center gap-1 z-10">
+                <span id="zoom-level-text" class="text-xs font-mono font-medium text-slate-600 px-2">100%</span>
+            </div>
+
+            <!-- SVG Render Canvas -->
+            <svg id="svg-canvas" class="w-full h-full absolute inset-0">
+                <defs>
+                    <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e293b"/>
+                    </marker>
+                    <marker id="arrowhead-selected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6"/>
+                    </marker>
+                </defs>
+                
+                <g id="viewport-group">
+                    <!-- Layer 1: Edges / Connection Lines -->
+                    <g id="edges-layer"></g>
+                    <!-- Layer 2: Temporary Connecting Line while dragging -->
+                    <path id="temp-edge-path" d="" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,4" class="hidden"></path>
+                    <!-- Layer 3: Nodes -->
+                    <g id="nodes-layer"></g>
+                    <!-- Layer 4: Interactive Anchor Highlights -->
+                    <g id="anchors-layer"></g>
+                    <!-- Layer 5: Selection Box (Rubberband) -->
+                    <rect id="selection-box" class="selection-box hidden" x="0" y="0" width="0" height="0"></rect>
+                </g>
+            </svg>
+        </main>
+
+        <!-- Right Inspector Sidebar -->
+        <aside class="w-72 bg-white border-l border-slate-200 flex flex-col z-10 shrink-0 shadow-sm" id="inspector-panel">
+            <div class="p-3 border-b border-slate-100 bg-slate-50">
+                <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">プロパティ</h2>
+                <p class="text-[11px] text-slate-400 mt-0.5">選択された要素の編集</p>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4 space-y-5" id="inspector-content">
+                <!-- Inspector form dynamically rendered by JS -->
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Confirmation Modal Dialog -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-sm w-full p-5 space-y-4">
+            <h3 class="text-sm font-bold text-slate-800">キャンバスクリアの確認</h3>
+            <p class="text-xs text-slate-600">キャンバス内のすべての図形と接続線を削除しますか？この操作は戻せます。</p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="modal-btn-cancel" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">キャンセル</button>
+                <button id="modal-btn-confirm" class="px-3 py-1.5 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition">削除する</button>
+            </div>
         </div>
-    </aside>
+    </div>
 
-</div>
+    <!-- Learning Guide Modal Dialog -->
+    <div id="guide-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </span>
+                    <h3 class="text-sm font-bold text-slate-800">フローチャート書き方講座 (JIS X 0121 準拠)</h3>
+                </div>
+                <button id="guide-modal-close" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-600 leading-relaxed">
+                <!-- Section 1 -->
+                <section class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        1. アルゴリズムの3大構造（基本の流れ）
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-bold text-indigo-700 block">順次 (じゅんじ)</span>
+                            <p class="text-[11px] text-slate-500">上から下へ順番に1つずつ処理を実行する最も基本となる構造です。</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-bold text-amber-700 block">分岐 (ぶんき)</span>
+                            <p class="text-[11px] text-slate-500">条件判断（ひし形）を使い、YES / NO で進む処理の経路を分けます。</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-bold text-emerald-700 block">反復 (はんぷく)</span>
+                            <p class="text-[11px] text-slate-500">ループ記号で処理を挟み、条件を満たす間同じ処理を繰り返します。</p>
+                        </div>
+                    </div>
+                </section>
 
-<script>
-    function renderCanvas() {
-        const viewport = document.getElementById('viewport-group');
-        if (!viewport) return;
-        viewport.setAttribute('transform', `translate(${store.panX}, ${store.panY}) scale(${store.zoom})`);
+                <!-- Section 2: Detailed JIS Shapes Guide -->
+                <section class="space-y-3">
+                    <h4 class="text-sm font-bold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        2. JIS記号一覧と役割・書き方ルール
+                    </h4>
+                    
+                    <div class="space-y-2.5 pt-1" id="guide-shapes-list">
+                        <!-- Shape items generated by JS in setupToolbar -->
+                    </div>
+                </section>
 
-        const zoomText = document.getElementById('zoom-level-text');
-        if (zoomText) zoomText.textContent = `${Math.round(store.zoom * 100)}%`;
+                <!-- Section 3 -->
+                <section class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        3. 正しくきれいな配置の共通ルール
+                    </h4>
+                    <ul class="list-disc pl-5 space-y-1.5 text-slate-600">
+                        <li><strong>流れの方向:</strong> 原則として「上から下」「左から右」に向かって並べます（逆流はループ線のみ）。</li>
+                        <li><strong>線の引き方:</strong> 直線または直角（クランク）折れ線を使用し、線同士が交差（クロス）しないように配置します。</li>
+                        <li><strong>分岐のラベル:</strong> 判断（ひし形）から出る線には、どちらの条件に進むかが分かるよう必ず **YES / NO** や **True / False** を明記します。</li>
+                        <li><strong>矢印の本数:</strong> 「処理」や「端子（開始）」から出る矢印は原則として**1本のみ**です（2本以上に分かれるのは判断記号のみ）。</li>
+                    </ul>
+                </section>
+            </div>
 
-        const container = document.getElementById('canvas-container');
-        if (container) {
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+                <button id="guide-modal-btn-close" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition shadow-sm">
+                    ガイドを閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const JIS_SHAPES = [
+            { type: 'terminal', name: '端子 (Terminal)', desc: '開始・終了', defaultLabel: '開始', rule: '1つのフローにつき「開始」と「終了」を必ず1個ずつ配置する。' },
+            { type: 'process', name: '処理 (Process)', desc: '代入・計算', defaultLabel: '処理', rule: '枠内には1つの処理のみ記載。線の出入りは原則「入る線1本・出る線1本」。' },
+            { type: 'decision', name: '判断 (Decision)', desc: '条件分岐', defaultLabel: '条件判断?', rule: '枠内に条件式を書く。ひし形から出る線には必ず「YES/NO」のラベルを書く。' },
+            { type: 'data', name: 'データ (Data I/O)', desc: 'データ入出力', defaultLabel: 'データ入力', rule: '「キーボード入力」「画面表示」など具体的な入出力内容を記載する。' },
+            { type: 'loop-start', name: 'ループ開始', desc: '繰り返し起点', defaultLabel: 'ループ開始', rule: '繰り返しの条件を記述し、必ず「ループ終了」とペアで使用する。' },
+            { type: 'loop-end', name: 'ループ終了', desc: '繰り返し終端', defaultLabel: 'ループ終了', rule: '「ループ開始」と本記号の間に配置された処理が繰り返し実行される。' },
+            { type: 'document', name: '書類 (Document)', desc: '帳票・印刷', defaultLabel: '書類出力', rule: 'PDF出力や紙の伝票発行など、ドキュメントの印刷・出力処理に使用する。' },
+            { type: 'subroutine', name: '定義済み処理', desc: 'サブルーチン', defaultLabel: 'サブ処理', rule: '共通化された別のフローチャート（関数）を呼び出す際に使用する。' },
+            { type: 'connector', name: '結合手 (Connector)', desc: 'フローの中継点', defaultLabel: '1', rule: '円の中に数字を入れて、離れた場所にある同じ数字の結合手へジャンプさせる。' }
+        ];
+
+        const LOCAL_STORAGE_KEY = 'jis_flowchart_studio_data_v1';
+
+        const store = {
+            nodes: [],
+            edges: [],
+            selectedNodeIds: [],
+            selectedEdgeId: null,
+            clipboard: null,
+            
+            zoom: 1.0,
+            panX: 0,
+            panY: 0,
+            showGrid: true,
+            snapToGrid: true,
+            gridSize: 20,
+
+            isPanning: false,
+            isSelecting: false,
+            selectStart: { x: 0, y: 0 },
+            panStart: { x: 0, y: 0 },
+            isConnecting: false,
+            connectStart: null,
+            pinchDist: 0,
+
+            history: [],
+            historyIndex: -1,
+            maxHistory: 30,
+
+            nextId: Date.now(),
+            generateId() { return 'elem_' + (this.nextId++); },
+
+            saveToLocalStorage() {
+                try {
+                    const payload = {
+                        nodes: this.nodes,
+                        edges: this.edges,
+                        updatedAt: Date.now()
+                    };
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+                    this.showSaveBadge();
+                } catch (e) {
+                    console.warn('LocalStorage save failed:', e);
+                }
+            },
+
+            loadFromLocalStorage() {
+                try {
+                    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+                    if (!raw) return false;
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+                        this.nodes = parsed.nodes;
+                        this.edges = parsed.edges;
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn('LocalStorage load failed:', e);
+                }
+                return false;
+            },
+
+            clearLocalStorage() {
+                try {
+                    localStorage.removeItem(LOCAL_STORAGE_KEY);
+                } catch (e) {
+                    console.warn('LocalStorage clear failed:', e);
+                }
+            },
+
+            showSaveBadge() {
+                const badge = document.getElementById('autosave-status');
+                if (badge) {
+                    badge.classList.remove('opacity-50');
+                    setTimeout(() => badge.classList.add('opacity-100'), 50);
+                }
+            },
+
+            saveState() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.history = this.history.slice(0, this.historyIndex + 1);
+                }
+                const state = {
+                    nodes: JSON.parse(JSON.stringify(this.nodes)),
+                    edges: JSON.parse(JSON.stringify(this.edges))
+                };
+                this.history.push(state);
+                if (this.history.length > this.maxHistory) {
+                    this.history.shift();
+                } else {
+                    this.historyIndex++;
+                }
+                
+                this.saveToLocalStorage();
+                updateUndoRedoButtons();
+            },
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    const state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.nodes = state.nodes;
+                    this.edges = state.edges;
+                    this.selectedNodeIds = [];
+                    this.selectedEdgeId = null;
+                    this.saveToLocalStorage();
+                    renderCanvas();
+                    updateInspector();
+                    updateUndoRedoButtons();
+                }
+            },
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    const state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.nodes = state.nodes;
+                    this.edges = state.edges;
+                    this.selectedNodeIds = [];
+                    this.selectedEdgeId = null;
+                    this.saveToLocalStorage();
+                    renderCanvas();
+                    updateInspector();
+                    updateUndoRedoButtons();
+                }
+            },
+
+            selectAll() {
+                this.selectedNodeIds = this.nodes.map(n => n.id);
+                this.selectedEdgeId = null;
+                renderCanvas();
+                updateInspector();
+            },
+
+            copySelected() {
+                if (this.selectedNodeIds.length === 0) return;
+                const nodesToCopy = this.nodes.filter(n => this.selectedNodeIds.includes(n.id));
+                const edgesToCopy = this.edges.filter(e => 
+                    this.selectedNodeIds.includes(e.sourceId) && this.selectedNodeIds.includes(e.targetId)
+                );
+                this.clipboard = JSON.parse(JSON.stringify({ nodes: nodesToCopy, edges: edgesToCopy }));
+            },
+
+            pasteClipboard() {
+                if (!this.clipboard || this.clipboard.nodes.length === 0) return;
+
+                const idMap = {};
+                const newNodes = [];
+
+                this.clipboard.nodes.forEach(node => {
+                    const newId = this.generateId();
+                    idMap[node.id] = newId;
+                    const cloned = JSON.parse(JSON.stringify(node));
+                    cloned.id = newId;
+                    cloned.x += 30;
+                    cloned.y += 30;
+                    newNodes.push(cloned);
+                });
+
+                const newEdges = [];
+                this.clipboard.edges.forEach(edge => {
+                    if (idMap[edge.sourceId] && idMap[edge.targetId]) {
+                        const cloned = JSON.parse(JSON.stringify(edge));
+                        cloned.id = this.generateId();
+                        cloned.sourceId = idMap[edge.sourceId];
+                        cloned.targetId = idMap[edge.targetId];
+                        newEdges.push(cloned);
+                    }
+                });
+
+                this.nodes.push(...newNodes);
+                this.edges.push(...newEdges);
+                this.selectedNodeIds = newNodes.map(n => n.id);
+                this.selectedEdgeId = null;
+
+                this.clipboard = JSON.parse(JSON.stringify({ nodes: newNodes, edges: newEdges }));
+
+                this.saveState();
+                renderCanvas();
+                updateInspector();
+            },
+
+            deleteSelected() {
+                if (this.selectedNodeIds.length > 0) {
+                    this.nodes = this.nodes.filter(n => !this.selectedNodeIds.includes(n.id));
+                    this.edges = this.edges.filter(e => 
+                        !this.selectedNodeIds.includes(e.sourceId) && !this.selectedNodeIds.includes(e.targetId)
+                    );
+                    this.selectedNodeIds = [];
+                }
+                if (this.selectedEdgeId) {
+                    this.edges = this.edges.filter(e => e.id !== this.selectedEdgeId);
+                    this.selectedEdgeId = null;
+                }
+                this.saveState();
+                renderCanvas();
+                updateInspector();
+            }
+        };
+
+        function initPalette() {
+            const container = document.getElementById('palette-container');
+            container.innerHTML = '';
+
+            JIS_SHAPES.forEach(shape => {
+                const item = document.createElement('div');
+                item.className = 'p-2.5 bg-slate-50 hover:bg-indigo-50/70 border border-slate-200 hover:border-indigo-300 rounded-lg cursor-grab transition flex items-center gap-3 group';
+                item.setAttribute('draggable', 'true');
+
+                const previewSvg = getShapePreviewSvg(shape.type);
+
+                item.innerHTML = `
+                    <div class="w-9 h-8 bg-white border border-slate-200 rounded flex items-center justify-center shrink-0 group-hover:border-indigo-400 shadow-2xs">
+                        ${previewSvg}
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="text-xs font-semibold text-slate-700 group-hover:text-indigo-900 truncate">${shape.name}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${shape.desc}</div>
+                    </div>
+                `;
+
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('shapeType', shape.type);
+                });
+
+                item.addEventListener('click', () => {
+                    addNodeToCanvas(shape.type, 350, 250);
+                });
+
+                container.appendChild(item);
+            });
+        }
+
+        function getShapePreviewSvg(type) {
+            const stroke = "#475569";
+            const fill = "#f8fafc";
+            switch(type) {
+                case 'terminal':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'process':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'decision':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="20,2 38,12 20,22 2,12" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'data':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="8,2 38,2 32,22 2,22" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'loop-start':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="8,2 32,2 38,8 38,22 2,22 2,8" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'loop-end':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="2,2 38,2 38,16 32,22 8,22 2,16" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'document':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><path d="M 2 2 L 38 2 L 38 18 Q 28 24 18 18 Q 10 14 2 20 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                case 'subroutine':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="22" stroke="${stroke}" stroke-width="1.5"/><line x1="32" y1="2" x2="32" y2="22" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+                case 'connector':
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><circle cx="20" cy="12" r="9" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+                default:
+                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            }
+        }
+
+        function loadDefaultTemplate() {
+            store.nodes = [
+                { id: 'node_start', type: 'terminal', label: '開始', x: 400, y: 120, width: 110, height: 48, fontSize: 14, strokeWidth: 2, color: 'white' },
+                { id: 'node_end', type: 'terminal', label: '終了', x: 400, y: 280, width: 110, height: 48, fontSize: 14, strokeWidth: 2, color: 'white' }
+            ];
+
+            store.edges = [
+                { id: 'edge_1', sourceId: 'node_start', sourceAnchor: 'bottom', targetId: 'node_end', targetAnchor: 'top', label: '', type: 'orthogonal' }
+            ];
+
+            store.saveState();
+            renderCanvas();
+            updateInspector();
+            fitViewToNodes();
+        }
+
+        function renderCanvas() {
+            const viewport = document.getElementById('viewport-group');
+            viewport.setAttribute('transform', `translate(${store.panX}, ${store.panY}) scale(${store.zoom})`);
+
+            document.getElementById('zoom-level-text').textContent = `${Math.round(store.zoom * 100)}%`;
+
+            const container = document.getElementById('canvas-container');
             if (store.showGrid) {
                 container.classList.remove('no-grid');
             } else {
                 container.classList.add('no-grid');
             }
+
+            renderEdges();
+            renderNodes();
+            renderAnchors();
         }
 
-        renderEdges();
-        renderNodes();
-    }
+        function renderEdges() {
+            const layer = document.getElementById('edges-layer');
+            layer.innerHTML = '';
 
-    function renderEdges() {
-        const edgesLayer = document.getElementById('edges-layer');
-        if (!edgesLayer) return;
-        edgesLayer.innerHTML = '';
+            store.edges.forEach(edge => {
+                const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
+                const targetNode = store.nodes.find(n => n.id === edge.targetId);
+                if (!sourceNode || !targetNode) return;
 
-        store.edges.forEach(edge => {
-            const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
-            const targetNode = store.nodes.find(n => n.id === edge.targetId);
-            if (!sourceNode || !targetNode) return;
+                const startPt = getAnchorCoordinates(sourceNode, edge.sourceAnchor);
+                const endPt = getAnchorCoordinates(targetNode, edge.targetAnchor);
 
-            const p1 = getAnchorPosition(sourceNode, edge.sourceAnchor || 'bottom');
-            const p2 = getAnchorPosition(targetNode, edge.targetAnchor || 'top');
-            const isSelected = store.selectedEdgeId === edge.id;
+                const pathD = calculateEdgePath(startPt, endPt, edge.sourceAnchor, edge.targetAnchor, edge.type);
+                const isSelected = store.selectedEdgeId === edge.id;
 
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'cursor-pointer group');
+                g.onclick = (e) => {
+                    e.stopPropagation();
+                    store.selectedEdgeId = edge.id;
+                    store.selectedNodeIds = [];
+                    renderCanvas();
+                    updateInspector();
+                };
+
+                const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                hitPath.setAttribute('d', pathD);
+                hitPath.setAttribute('fill', 'none');
+                hitPath.setAttribute('stroke', 'transparent');
+                hitPath.setAttribute('stroke-width', '14');
+
+                const visiblePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                visiblePath.setAttribute('d', pathD);
+                visiblePath.setAttribute('fill', 'none');
+                visiblePath.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
+                visiblePath.setAttribute('stroke-width', isSelected ? '2.5' : '1.8');
+                visiblePath.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
+                visiblePath.setAttribute('class', 'transition-all duration-150');
+
+                g.appendChild(hitPath);
+                g.appendChild(visiblePath);
+
+                if (edge.label && edge.label.trim() !== '') {
+                    const midPt = getPathMidPoint(startPt, endPt, pathD);
+                    const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
+                    text.setAttribute('x', midPt.x);
+                    text.setAttribute('y', midPt.y);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'central');
+                    text.setAttribute('fill', isSelected ? '#2563eb' : '#334155');
+                    text.setAttribute('font-size', '11');
+                    text.setAttribute('font-weight', '600');
+                    text.textContent = edge.label;
+
+                    const labelWidth = edge.label.length * 8 + 10;
+                    textBg.setAttribute('x', midPt.x - labelWidth / 2);
+                    textBg.setAttribute('y', midPt.y - 9);
+                    textBg.setAttribute('width', labelWidth);
+                    textBg.setAttribute('height', '18');
+                    textBg.setAttribute('rx', '4');
+                    textBg.setAttribute('fill', '#ffffff');
+                    textBg.setAttribute('stroke', isSelected ? '#93c5fd' : '#cbd5e1');
+                    textBg.setAttribute('stroke-width', '1');
+
+                    g.appendChild(textBg);
+                    g.appendChild(text);
+                }
+
+                layer.appendChild(g);
+            });
+        }
+
+        function calculateEdgePath(start, end, sAnchor, tAnchor, type) {
+            if (type === 'straight') {
+                return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+            }
+
+            if (type === 'bezier') {
+                const dx = Math.abs(end.x - start.x) / 2;
+                const dy = Math.abs(end.y - start.y) / 2;
+                let c1 = { ...start }, c2 = { ...end };
+
+                if (sAnchor === 'bottom') c1.y += dy;
+                if (sAnchor === 'top') c1.y -= dy;
+                if (sAnchor === 'right') c1.x += dx;
+                if (sAnchor === 'left') c1.x -= dx;
+
+                if (tAnchor === 'top') c2.y -= dy;
+                if (tAnchor === 'bottom') c2.y += dy;
+                if (tAnchor === 'right') c2.x += dx;
+                if (tAnchor === 'left') c2.x -= dx;
+
+                return `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`;
+            }
+
+            const margin = 40;
+
+            if (sAnchor === 'left' && tAnchor === 'left') {
+                const minX = Math.min(start.x, end.x) - margin;
+                return `M ${start.x} ${start.y} L ${minX} ${start.y} L ${minX} ${end.y} L ${end.x} ${end.y}`;
+            }
+
+            if (sAnchor === 'right' && tAnchor === 'right') {
+                const maxX = Math.max(start.x, end.x) + margin;
+                return `M ${start.x} ${start.y} L ${maxX} ${start.y} L ${maxX} ${end.y} L ${end.x} ${end.y}`;
+            }
+
+            if (sAnchor === 'top' && tAnchor === 'top') {
+                const minY = Math.min(start.y, end.y) - margin;
+                return `M ${start.x} ${start.y} L ${start.x} ${minY} L ${end.x} ${minY} L ${end.x} ${end.y}`;
+            }
+
+            if (sAnchor === 'bottom' && tAnchor === 'bottom') {
+                const maxY = Math.max(start.y, end.y) + margin;
+                return `M ${start.x} ${start.y} L ${start.x} ${maxY} L ${end.x} ${maxY} L ${end.x} ${end.y}`;
+            }
+
+            let midY = (start.y + end.y) / 2;
+            return `M ${start.x} ${start.y} L ${start.x} ${midY} L ${end.x} ${midY} L ${end.x} ${end.y}`;
+        }
+
+        function getPathMidPoint(start, end, pathD) {
+            return {
+                x: (start.x + end.x) / 2,
+                y: (start.y + end.y) / 2
+            };
+        }
+
+        function renderNodes() {
+            const layer = document.getElementById('nodes-layer');
+            layer.innerHTML = '';
+
+            store.nodes.forEach(node => {
+                const isSelected = store.selectedNodeIds.includes(node.id);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('transform', `translate(${node.x - node.width/2}, ${node.y - node.height/2})`);
+                g.setAttribute('class', 'cursor-move');
+
+                let strokeColor = '#1e293b';
+                let fillColor = '#ffffff';
+
+                if (node.color === 'indigo') { fillColor = '#eef2ff'; strokeColor = '#4338ca'; }
+                else if (node.color === 'emerald') { fillColor = '#ecfdf5'; strokeColor = '#047857'; }
+                else if (node.color === 'amber') { fillColor = '#fffbeb'; strokeColor = '#b45309'; }
+                else if (node.color === 'cyan') { fillColor = '#ecfeff'; strokeColor = '#0e7490'; }
+                else if (node.color === 'rose') { fillColor = '#fff1f2'; strokeColor = '#be123c'; }
+
+                if (isSelected) {
+                    strokeColor = '#2563eb';
+                }
+
+                const shapeSvg = createNodeShapeSvg(node, fillColor, strokeColor, isSelected);
+                g.appendChild(shapeSvg);
+
+                const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textGroup.setAttribute('x', node.width / 2);
+                textGroup.setAttribute('y', node.height / 2);
+                textGroup.setAttribute('text-anchor', 'middle');
+                textGroup.setAttribute('dominant-baseline', 'central');
+                textGroup.setAttribute('font-size', node.fontSize || 13);
+                textGroup.setAttribute('font-weight', '500');
+                textGroup.setAttribute('fill', '#0f172a');
+
+                const lines = (node.label || '').split('\n');
+                const lineHeight = (node.fontSize || 13) * 1.25;
+                const startY = (node.height / 2) - ((lines.length - 1) * lineHeight) / 2;
+
+                lines.forEach((lineText, idx) => {
+                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    tspan.setAttribute('x', node.width / 2);
+                    tspan.setAttribute('y', startY + (idx * lineHeight));
+                    tspan.textContent = lineText;
+                    textGroup.appendChild(tspan);
+                });
+
+                g.appendChild(textGroup);
+
+                const handlePointerDown = (e) => {
+                    const isTouch = e.type === 'touchstart';
+                    if (!isTouch && e.button !== 0) return;
+                    e.stopPropagation();
+
+                    if (e.shiftKey) {
+                        if (store.selectedNodeIds.includes(node.id)) {
+                            store.selectedNodeIds = store.selectedNodeIds.filter(id => id !== node.id);
+                        } else {
+                            store.selectedNodeIds.push(node.id);
+                        }
+                    } else {
+                        if (!store.selectedNodeIds.includes(node.id)) {
+                            store.selectedNodeIds = [node.id];
+                        }
+                    }
+                    store.selectedEdgeId = null;
+                    renderCanvas();
+                    updateInspector();
+
+                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+                    const startMouseX = clientX;
+                    const startMouseY = clientY;
+
+                    const initialPositions = store.nodes
+                        .filter(n => store.selectedNodeIds.includes(n.id))
+                        .map(n => ({ id: n.id, origX: n.x, origY: n.y }));
+
+                    function onMove(me) {
+                        const curX = me.type.startsWith('touch') ? me.touches[0].clientX : me.clientX;
+                        const curY = me.type.startsWith('touch') ? me.touches[0].clientY : me.clientY;
+                        const dx = (curX - startMouseX) / store.zoom;
+                        const dy = (curY - startMouseY) / store.zoom;
+
+                        initialPositions.forEach(pos => {
+                            const targetNode = store.nodes.find(n => n.id === pos.id);
+                            if (targetNode) {
+                                let newX = pos.origX + dx;
+                                let newY = pos.origY + dy;
+
+                                if (store.snapToGrid) {
+                                    newX = Math.round(newX / store.gridSize) * store.gridSize;
+                                    newY = Math.round(newY / store.gridSize) * store.gridSize;
+                                }
+
+                                targetNode.x = newX;
+                                targetNode.y = newY;
+                            }
+                        });
+
+                        renderCanvas();
+                    }
+
+                    function onUp() {
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                        window.removeEventListener('touchmove', onMove);
+                        window.removeEventListener('touchend', onUp);
+                        store.saveState();
+                    }
+
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                    window.addEventListener('touchmove', onMove, { passive: false });
+                    window.addEventListener('touchend', onUp);
+                };
+
+                g.onmousedown = handlePointerDown;
+                g.ontouchstart = handlePointerDown;
+
+                layer.appendChild(g);
+            });
+        }
+
+        function createNodeShapeSvg(node, fill, stroke, isSelected) {
             const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            g.setAttribute('class', 'cursor-pointer');
-            g.addEventListener('click', (e) => {
-                e.stopPropagation();
-                store.selectedEdgeId = edge.id;
-                store.selectedNodeIds = [];
-                renderCanvas();
-                updateInspector();
+            const w = node.width;
+            const h = node.height;
+            const sw = isSelected ? (node.strokeWidth || 2) + 1 : (node.strokeWidth || 2);
+
+            let element;
+
+            switch(node.type) {
+                case 'terminal':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    element.setAttribute('x', '0'); element.setAttribute('y', '0');
+                    element.setAttribute('width', w); element.setAttribute('height', h);
+                    element.setAttribute('rx', h / 2);
+                    break;
+                case 'process':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    element.setAttribute('x', '0'); element.setAttribute('y', '0');
+                    element.setAttribute('width', w); element.setAttribute('height', h);
+                    element.setAttribute('rx', '3');
+                    break;
+                case 'decision':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    element.setAttribute('points', `${w/2},0 ${w},${h/2} ${w/2},${h} 0,${h/2}`);
+                    break;
+                case 'data':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    element.setAttribute('points', `${w*0.2},0 ${w},0 ${w*0.8},${h} 0,${h}`);
+                    break;
+                case 'loop-start':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    element.setAttribute('points', `12,0 ${w-12},0 ${w},12 ${w},${h} 0,${h} 0,12`);
+                    break;
+                case 'loop-end':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    element.setAttribute('points', `0,0 ${w},0 ${w},${h-12} ${w-12},${h} 12,${h} 0,${h-12}`);
+                    break;
+                case 'document':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    element.setAttribute('d', `M 0 0 L ${w} 0 L ${w} ${h*0.8} Q ${w*0.75} ${h*1.1} ${w*0.5} ${h*0.8} Q ${w*0.25} ${h*0.5} 0 ${h*0.9} Z`);
+                    break;
+                case 'subroutine':
+                    const subG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
+                    rect.setAttribute('width', w); rect.setAttribute('height', h);
+                    rect.setAttribute('fill', fill); rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width', sw);
+
+                    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    l1.setAttribute('x1', '12'); l1.setAttribute('y1', '0');
+                    l1.setAttribute('x2', '12'); l1.setAttribute('y2', h);
+                    l1.setAttribute('stroke', stroke); l1.setAttribute('stroke-width', sw);
+
+                    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    l2.setAttribute('x1', w - 12); l2.setAttribute('y1', '0');
+                    l2.setAttribute('x2', w - 12); l2.setAttribute('y2', h);
+                    l2.setAttribute('stroke', stroke); l2.setAttribute('stroke-width', sw);
+
+                    subG.appendChild(rect); subG.appendChild(l1); subG.appendChild(l2);
+                    return subG;
+                case 'connector':
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    element.setAttribute('cx', w/2); element.setAttribute('cy', h/2);
+                    element.setAttribute('r', Math.min(w, h)/2);
+                    break;
+                default:
+                    element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    element.setAttribute('x', '0'); element.setAttribute('y', '0');
+                    element.setAttribute('width', w); element.setAttribute('height', h);
+            }
+
+            element.setAttribute('fill', fill);
+            element.setAttribute('stroke', stroke);
+            element.setAttribute('stroke-width', sw);
+
+            g.appendChild(element);
+            return g;
+        }
+
+        function renderAnchors() {
+            const layer = document.getElementById('anchors-layer');
+            layer.innerHTML = '';
+
+            const anchors = ['top', 'bottom', 'left', 'right'];
+
+            store.nodes.forEach(node => {
+                anchors.forEach(pos => {
+                    const coord = getAnchorCoordinates(node, pos);
+
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                    const hitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    hitCircle.setAttribute('cx', coord.x); hitCircle.setAttribute('cy', coord.y);
+                    hitCircle.setAttribute('r', '22'); hitCircle.setAttribute('fill', 'transparent');
+                    hitCircle.setAttribute('class', 'cursor-crosshair');
+
+                    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    dot.setAttribute('cx', coord.x); dot.setAttribute('cy', coord.y);
+                    dot.setAttribute('r', '5'); dot.setAttribute('fill', '#3b82f6');
+                    dot.setAttribute('stroke', '#ffffff'); dot.setAttribute('stroke-width', '1.5');
+                    dot.setAttribute('class', 'opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity duration-150');
+
+                    g.appendChild(hitCircle);
+                    g.appendChild(dot);
+                    g.setAttribute('class', 'group');
+
+                    const handleAnchorStart = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+
+                        store.isConnecting = true;
+                        store.connectStart = { nodeId: node.id, anchor: pos, startPt: coord };
+
+                        const tempPath = document.getElementById('temp-edge-path');
+                        tempPath.classList.remove('hidden');
+
+                        function onConnectingMove(me) {
+                            const isTouch = me.type.startsWith('touch');
+                            const clientX = isTouch ? me.touches[0].clientX : me.clientX;
+                            const clientY = isTouch ? me.touches[0].clientY : me.clientY;
+                            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+                            const currentX = (clientX - rect.left - store.panX) / store.zoom;
+                            const currentY = (clientY - rect.top - store.panY) / store.zoom;
+
+                            tempPath.setAttribute('d', `M ${coord.x} ${coord.y} L ${currentX} ${currentY}`);
+                        }
+
+                        function onConnectingUp(me) {
+                            window.removeEventListener('mousemove', onConnectingMove);
+                            window.removeEventListener('mouseup', onConnectingUp);
+                            window.removeEventListener('touchmove', onConnectingMove);
+                            window.removeEventListener('touchend', onConnectingUp);
+
+                            tempPath.classList.add('hidden');
+                            store.isConnecting = false;
+
+                            const isTouch = me.type.startsWith('touch');
+                            const clientX = isTouch ? (me.changedTouches ? me.changedTouches[0].clientX : 0) : me.clientX;
+                            const clientY = isTouch ? (me.changedTouches ? me.changedTouches[0].clientY : 0) : me.clientY;
+
+                            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+                            const dropX = (clientX - rect.left - store.panX) / store.zoom;
+                            const dropY = (clientY - rect.top - store.panY) / store.zoom;
+
+                            const target = findNearestAnchor(dropX, dropY, node.id);
+                            if (target) {
+                                store.edges.push({
+                                    id: store.generateId(),
+                                    sourceId: store.connectStart.nodeId,
+                                    sourceAnchor: store.connectStart.anchor,
+                                    targetId: target.nodeId,
+                                    targetAnchor: target.anchor,
+                                    label: '',
+                                    type: 'orthogonal'
+                                });
+                                store.saveState();
+                                renderCanvas();
+                            }
+                        }
+
+                        window.addEventListener('mousemove', onConnectingMove);
+                        window.addEventListener('mouseup', onConnectingUp);
+                        window.addEventListener('touchmove', onConnectingMove, { passive: false });
+                        window.addEventListener('touchend', onConnectingUp);
+                    };
+
+                    g.onmousedown = handleAnchorStart;
+                    g.ontouchstart = handleAnchorStart;
+
+                    layer.appendChild(g);
+                });
+            });
+        }
+
+        function getAnchorCoordinates(node, position) {
+            switch(position) {
+                case 'top': return { x: node.x, y: node.y - node.height / 2 };
+                case 'bottom': return { x: node.x, y: node.y + node.height / 2 };
+                case 'left': return { x: node.x - node.width / 2, y: node.y };
+                case 'right': return { x: node.x + node.width / 2, y: node.y };
+                default: return { x: node.x, y: node.y };
+            }
+        }
+
+        function findNearestAnchor(x, y, excludeNodeId) {
+            let nearest = null;
+            let minDistance = 30;
+
+            store.nodes.forEach(node => {
+                if (node.id === excludeNodeId) return;
+                ['top', 'bottom', 'left', 'right'].forEach(pos => {
+                    const coord = getAnchorCoordinates(node, pos);
+                    const dist = Math.hypot(coord.x - x, coord.y - y);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearest = { nodeId: node.id, anchor: pos };
+                    }
+                });
             });
 
-            // 折れ線（クランク）の経路計算
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
-            const pathD = `M ${p1.x} ${p1.y} L ${midX} ${p1.y} L ${midX} ${p2.y} L ${p2.x} ${p2.y}`;
-
-            // クリック用の太い透明パス
-            const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            hitPath.setAttribute('d', pathD);
-            hitPath.setAttribute('fill', 'none');
-            hitPath.setAttribute('stroke', 'transparent');
-            hitPath.setAttribute('stroke-width', '16');
-
-            // 描画用の線パス
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', pathD);
-            path.setAttribute('fill', 'none');
-            path.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
-            path.setAttribute('stroke-width', isSelected ? '2.5' : '2');
-            path.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
-
-            g.appendChild(hitPath);
-            g.appendChild(path);
-
-            // 線上のラベル表示（白い背景ボックス＋文字）
-            if (edge.label && edge.label.trim() !== '') {
-                const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-                // 文字サイズの動的計測用の仮要素設定
-                const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                labelText.setAttribute('x', midX);
-                labelText.setAttribute('y', midY);
-                labelText.setAttribute('fill', isSelected ? '#1d4ed8' : '#334155');
-                labelText.setAttribute('font-size', '11');
-                labelText.setAttribute('font-weight', '700');
-                labelText.setAttribute('text-anchor', 'middle');
-                labelText.setAttribute('dominant-baseline', 'central');
-                labelText.textContent = edge.label;
-
-                // 背景用白角丸矩形
-                const approxWidth = Math.max(20, edge.label.length * 8 + 12);
-                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                rect.setAttribute('x', midX - approxWidth / 2);
-                rect.setAttribute('y', midY - 10);
-                rect.setAttribute('width', approxWidth);
-                rect.setAttribute('height', '20');
-                rect.setAttribute('rx', '4');
-                rect.setAttribute('fill', '#ffffff');
-                rect.setAttribute('stroke', isSelected ? '#3b82f6' : '#cbd5e1');
-                rect.setAttribute('stroke-width', '1.5');
-
-                labelGroup.appendChild(rect);
-                labelGroup.appendChild(labelText);
-                g.appendChild(labelGroup);
-            }
-
-            edgesLayer.appendChild(g);
-        });
-    }
-
-    function renderNodes() {
-        const nodesLayer = document.getElementById('nodes-layer');
-        if (!nodesLayer) return;
-        nodesLayer.innerHTML = '';
-
-        store.nodes.forEach(node => {
-            const isSelected = store.selectedNodeIds.includes(node.id);
-            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            g.setAttribute('class', 'cursor-move');
-            g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
-
-            // ノード形状のレンダリング
-            const shapePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            shapePath.setAttribute('d', getNodePathD(node.type, node.width, node.height));
-            shapePath.setAttribute('fill', node.color || '#ffffff');
-            shapePath.setAttribute('stroke', isSelected ? '#3b82f6' : '#334155');
-            shapePath.setAttribute('stroke-width', isSelected ? '2.5' : (node.strokeWidth || '2'));
-
-            if (isSelected) {
-                shapePath.setAttribute('filter', 'drop-shadow(0 4px 6px rgba(59, 130, 246, 0.25))');
-            }
-
-            g.appendChild(shapePath);
-
-            // テキスト描画
-            if (node.label) {
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', node.width / 2);
-                text.setAttribute('y', node.height / 2);
-                text.setAttribute('fill', '#1e293b');
-                text.setAttribute('font-size', node.fontSize || '13');
-                text.setAttribute('font-weight', '500');
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('dominant-baseline', 'central');
-                text.textContent = node.label;
-                g.appendChild(text);
-            }
-
-            nodesLayer.appendChild(g);
-        });
-    }
-
-    function getNodePathD(type, w, h) {
-        switch (type) {
-            case 'terminal':
-                const r = h / 2;
-                return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 ${r} 0 Z`;
-            case 'decision':
-                return `M ${w / 2} 0 L ${w} ${h / 2} L ${w / 2} ${h} L 0 ${h / 2} Z`;
-            case 'data':
-                const skew = 15;
-                return `M ${skew} 0 L ${w} 0 L ${w - skew} ${h} L 0 ${h} Z`;
-            case 'process':
-            default:
-                return `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
+            return nearest;
         }
-    }
 
-    function getAnchorPosition(node, anchor) {
-        const x = node.x;
-        const y = node.y;
-        const w = node.width;
-        const h = node.height;
+        function fitViewToNodes() {
+            if (store.nodes.length === 0) return;
 
-        switch (anchor) {
-            case 'top': return { x: x + w / 2, y: y };
-            case 'right': return { x: x + w, y: y + h / 2 };
-            case 'bottom': return { x: x + w / 2, y: y + h };
-            case 'left': return { x: x, y: y + h / 2 };
-            default: return { x: x + w / 2, y: y + h / 2 };
+            const svg = document.getElementById('svg-canvas');
+            if (!svg) return;
+            const rect = svg.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            store.nodes.forEach(n => {
+                minX = Math.min(minX, n.x - n.width / 2);
+                minY = Math.min(minY, n.y - n.height / 2);
+                maxX = Math.max(maxX, n.x + n.width / 2);
+                maxY = Math.max(maxY, n.y + n.height / 2);
+            });
+
+            const padding = 80;
+            const contentWidth = (maxX - minX) + padding * 2;
+            const contentHeight = (maxY - minY) + padding * 2;
+            const contentCenterX = (minX + maxX) / 2;
+            const contentCenterY = (minY + maxY) / 2;
+
+            const zoomX = rect.width / contentWidth;
+            const zoomY = rect.height / contentHeight;
+            let targetZoom = Math.min(zoomX, zoomY, 1.1);
+            targetZoom = Math.max(targetZoom, 0.5);
+
+            store.zoom = targetZoom;
+            store.panX = (rect.width / 2) - (contentCenterX * store.zoom);
+            store.panY = (rect.height / 2) - (contentCenterY * store.zoom);
         }
-    }
 
-      ctx.restore();
-    }
-<!-- ... existing code ... -->
+        function addNodeToCanvas(type, x, y) {
+            const shapeInfo = JIS_SHAPES.find(s => s.type === type);
+            const newNode = {
+                id: store.generateId(),
+                type: type,
+                label: shapeInfo ? shapeInfo.defaultLabel : 'ノード',
+                x: x || 400,
+                y: y || 250,
+                width: type === 'connector' ? 44 : 110,
+                height: type === 'connector' ? 44 : 50,
+                fontSize: 13,
+                strokeWidth: 2,
+                color: 'white'
+            };
+
+            store.nodes.push(newNode);
+            store.selectedNodeIds = [newNode.id];
+            store.selectedEdgeId = null;
+            store.saveState();
+            renderCanvas();
+            updateInspector();
+        }
+
+        function updateInspector() {
+            const container = document.getElementById('inspector-content');
+            container.innerHTML = '';
+
+            if (store.selectedNodeIds.length === 1) {
+                const node = store.nodes.find(n => n.id === store.selectedNodeIds[0]);
+                if (!node) return;
+
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">テキスト表示</label>
+                            <textarea id="inp-node-label" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none" rows="3">${node.label}</textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">文字サイズ</label>
+                                <input type="number" id="inp-font-size" value="${node.fontSize || 13}" min="9" max="24" class="w-full text-xs p-1.5 border border-slate-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">枠線の太さ</label>
+                                <input type="number" id="inp-stroke-width" value="${node.strokeWidth || 2}" min="1" max="5" class="w-full text-xs p-1.5 border border-slate-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-2">カラーテーマ</label>
+                            <div class="grid grid-cols-6 gap-1.5" id="color-picker-group">
+                                ${['white', 'indigo', 'emerald', 'amber', 'cyan', 'rose'].map(c => `
+                                    <button data-color="${c}" class="w-7 h-7 rounded-full border-2 ${node.color === c ? 'border-indigo-600 scale-110' : 'border-slate-300'} transition" style="background-color: ${getColorHex(c)}"></button>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100">
+                            <button id="btn-delete-node" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg transition border border-rose-200 flex items-center justify-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                削除
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('inp-node-label').addEventListener('input', (e) => {
+                    node.label = e.target.value;
+                    renderCanvas();
+                });
+                document.getElementById('inp-node-label').addEventListener('change', () => store.saveState());
+
+                document.getElementById('inp-font-size').addEventListener('change', (e) => {
+                    node.fontSize = parseInt(e.target.value) || 13;
+                    renderCanvas();
+                    store.saveState();
+                });
+
+                document.getElementById('inp-stroke-width').addEventListener('change', (e) => {
+                    node.strokeWidth = parseInt(e.target.value) || 2;
+                    renderCanvas();
+                    store.saveState();
+                });
+
+                document.querySelectorAll('#color-picker-group button').forEach(btn => {
+                    btn.onclick = () => {
+                        node.color = btn.dataset.color;
+                        renderCanvas();
+                        updateInspector();
+                        store.saveState();
+                    };
+                });
+
+                document.getElementById('btn-delete-node').onclick = () => store.deleteSelected();
+                return;
+            }
+
+            if (store.selectedNodeIds.length > 1) {
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="text-xs font-semibold text-slate-700">
+                            ${store.selectedNodeIds.length} 個の要素を選択中
+                        </div>
+                        <div class="pt-2">
+                            <button id="btn-delete-multiple" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg transition border border-rose-200 flex items-center justify-center gap-1">
+                                一括削除
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('btn-delete-multiple').onclick = () => store.deleteSelected();
+                return;
+            }
+
+            if (store.selectedEdgeId) {
+                const edge = store.edges.find(e => e.id === store.selectedEdgeId);
+                if (!edge) return;
+
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">分岐ラベルテキスト</label>
+                            <input type="text" id="inp-edge-label" value="${edge.label || ''}" placeholder="例: YES / NO" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <div class="flex gap-1.5 mt-2">
+                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="YES">YES</button>
+                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="NO">NO</button>
+                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="True">True</button>
+                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="False">False</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">接続線のスタイル</label>
+                            <select id="sel-edge-type" class="w-full text-xs p-2 border border-slate-300 rounded-md bg-white">
+                                <option value="orthogonal" ${edge.type === 'orthogonal' ? 'selected' : ''}>直角 (JIS標準)</option>
+                                <option value="straight" ${edge.type === 'straight' ? 'selected' : ''}>直線</option>
+                                <option value="bezier" ${edge.type === 'bezier' ? 'selected' : ''}>曲線 (ベジェ)</option>
+                            </select>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100">
+                            <button id="btn-delete-edge" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg transition border border-rose-200 flex items-center justify-center gap-1">
+                                接続線を削除
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('inp-edge-label').addEventListener('input', (e) => {
+                    edge.label = e.target.value;
+                    renderCanvas();
+                });
+                document.getElementById('inp-edge-label').addEventListener('change', () => store.saveState());
+
+                document.querySelectorAll('.btn-preset-label').forEach(btn => {
+                    btn.onclick = () => {
+                        edge.label = btn.dataset.val;
+                        renderCanvas();
+                        updateInspector();
+                        store.saveState();
+                    };
+                });
+
+                document.getElementById('sel-edge-type').addEventListener('change', (e) => {
+                    edge.type = e.target.value;
+                    renderCanvas();
+                    store.saveState();
+                });
+
+                document.getElementById('btn-delete-edge').onclick = () => store.deleteSelected();
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="text-center py-10 text-slate-400">
+                    <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                    <p class="text-xs">図形または線を選択すると<br>プロパティを編集できます</p>
+                </div>
+            `;
+        }
+
+        function getColorHex(colorName) {
+            switch(colorName) {
+                case 'indigo': return '#eef2ff';
+                case 'emerald': return '#ecfdf5';
+                case 'amber': return '#fffbeb';
+                case 'cyan': return '#ecfeff';
+                case 'rose': return '#fff1f2';
+                default: return '#ffffff';
+            }
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('btn-undo').disabled = store.historyIndex <= 0;
+            document.getElementById('btn-redo').disabled = store.historyIndex >= store.history.length - 1;
+        }
+
+        function setupViewportInteractions() {
+            const container = document.getElementById('canvas-container');
+            const selectionBox = document.getElementById('selection-box');
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) {
+                    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+                    store.zoom = Math.min(Math.max(store.zoom * zoomFactor, 0.3), 3.0);
+                } else {
+                    if (e.shiftKey) {
+                        store.panX -= e.deltaY;
+                    } else {
+                        store.panY -= e.deltaY;
+                    }
+                }
+                renderCanvas();
+            }, { passive: false });
+
+            const startInteraction = (clientX, clientY, isRightClick) => {
+                const rect = container.getBoundingClientRect();
+                const canvasX = (clientX - rect.left - store.panX) / store.zoom;
+                const canvasY = (clientY - rect.top - store.panY) / store.zoom;
+
+                if (isRightClick) {
+                    store.isPanning = true;
+                    store.panStart = { x: clientX - store.panX, y: clientY - store.panY };
+                } else {
+                    store.isSelecting = true;
+                    store.selectStart = { x: canvasX, y: canvasY };
+                    store.selectedNodeIds = [];
+                    store.selectedEdgeId = null;
+                    selectionBox.setAttribute('x', canvasX);
+                    selectionBox.setAttribute('y', canvasY);
+                    selectionBox.setAttribute('width', 0);
+                    selectionBox.setAttribute('height', 0);
+                    selectionBox.classList.remove('hidden');
+                    renderCanvas();
+                    updateInspector();
+                }
+            };
+
+            container.onmousedown = (e) => {
+                if (e.target === container || e.target.tagName === 'svg') {
+                    startInteraction(e.clientX, e.clientY, e.button === 2 || e.button === 1);
+                }
+            };
+
+            container.oncontextmenu = (e) => e.preventDefault();
+
+            container.ontouchstart = (e) => {
+                if (e.touches.length === 1 && (e.target === container || e.target.tagName === 'svg')) {
+                    startInteraction(e.touches[0].clientX, e.touches[0].clientY, false);
+                } else if (e.touches.length === 2) {
+                    store.isPanning = false;
+                    store.isSelecting = false;
+                    selectionBox.classList.add('hidden');
+                    store.pinchDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            };
+
+            const handlePointerMove = (e) => {
+                const isTouch = e.type.startsWith('touch');
+                if (isTouch && e.touches.length === 2) {
+                    const newDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (store.pinchDist > 0) {
+                        const factor = newDist / store.pinchDist;
+                        store.zoom = Math.min(Math.max(store.zoom * factor, 0.3), 3.0);
+                        renderCanvas();
+                    }
+                    store.pinchDist = newDist;
+                    return;
+                }
+
+                if (store.isPanning) {
+                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+                    store.panX = clientX - store.panStart.x;
+                    store.panY = clientY - store.panStart.y;
+                    renderCanvas();
+                } else if (store.isSelecting) {
+                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+                    const rect = container.getBoundingClientRect();
+                    const currentX = (clientX - rect.left - store.panX) / store.zoom;
+                    const currentY = (clientY - rect.top - store.panY) / store.zoom;
+
+                    const x = Math.min(store.selectStart.x, currentX);
+                    const y = Math.min(store.selectStart.y, currentY);
+                    const width = Math.abs(currentX - store.selectStart.x);
+                    const height = Math.abs(currentY - store.selectStart.y);
+
+                    selectionBox.setAttribute('x', x);
+                    selectionBox.setAttribute('y', y);
+                    selectionBox.setAttribute('width', width);
+                    selectionBox.setAttribute('height', height);
+
+                    store.selectedNodeIds = store.nodes.filter(n => 
+                        n.x >= x && n.x <= x + width && n.y >= y && n.y <= y + height
+                    ).map(n => n.id);
+
+                    renderCanvas();
+                }
+            };
+
+            window.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('touchmove', handlePointerMove, { passive: false });
+
+            const handlePointerEnd = () => {
+                store.isPanning = false;
+                if (store.isSelecting) {
+                    store.isSelecting = false;
+                    selectionBox.classList.add('hidden');
+                    updateInspector();
+                }
+                store.pinchDist = 0;
+            };
+
+            window.addEventListener('mouseup', handlePointerEnd);
+            window.addEventListener('touchend', handlePointerEnd);
+
+            container.addEventListener('dragover', (e) => e.preventDefault());
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const shapeType = e.dataTransfer.getData('shapeType');
+                if (shapeType) {
+                    const rect = container.getBoundingClientRect();
+                    const dropX = (e.clientX - rect.left - store.panX) / store.zoom;
+                    const dropY = (e.clientY - rect.top - store.panY) / store.zoom;
+                    addNodeToCanvas(shapeType, dropX, dropY);
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === 'a' || e.key === 'A') {
+                        e.preventDefault();
+                        store.selectAll();
+                    } else if (e.key === 'c' || e.key === 'C') {
+                        e.preventDefault();
+                        store.copySelected();
+                    } else if (e.key === 'v' || e.key === 'V') {
+                        e.preventDefault();
+                        store.pasteClipboard();
+                    } else if (e.key === 'z' || e.key === 'Z') {
+                        e.preventDefault();
+                        if (e.shiftKey) store.redo();
+                        else store.undo();
+                    } else if (e.key === 'y' || e.key === 'Y') {
+                        e.preventDefault();
+                        store.redo();
+                    }
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    store.deleteSelected();
+                }
+            });
+        }
+
+        function setupToolbar() {
+            document.getElementById('btn-undo').onclick = () => store.undo();
+            document.getElementById('btn-redo').onclick = () => store.redo();
+
+            document.getElementById('btn-select-all').onclick = () => store.selectAll();
+            document.getElementById('btn-copy').onclick = () => store.copySelected();
+            document.getElementById('btn-paste').onclick = () => store.pasteClipboard();
+
+            // Populate Learning Guide Shapes Section with SVGs & Rules
+            const guideListContainer = document.getElementById('guide-shapes-list');
+            if (guideListContainer) {
+                guideListContainer.innerHTML = '';
+                JIS_SHAPES.forEach(shape => {
+                    const svgIcon = getShapePreviewSvg(shape.type);
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3.5';
+                    item.innerHTML = `
+                        <div class="w-10 h-9 bg-white border border-slate-200 rounded-lg flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                            ${svgIcon}
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-800 text-xs">${shape.name}</span>
+                                <span class="text-[10px] text-slate-400 font-medium">(${shape.desc})</span>
+                            </div>
+                            <div class="text-[11px] text-slate-600">
+                                <strong>ルール・書き方:</strong> ${shape.rule}
+                            </div>
+                        </div>
+                    `;
+                    guideListContainer.appendChild(item);
+                });
+            }
+
+            // Learning Guide Modal Operations
+            const guideModal = document.getElementById('guide-modal');
+            document.getElementById('btn-open-guide').onclick = () => guideModal.classList.remove('hidden');
+            document.getElementById('guide-modal-close').onclick = () => guideModal.classList.add('hidden');
+            document.getElementById('guide-modal-btn-close').onclick = () => guideModal.classList.add('hidden');
+
+            document.getElementById('btn-zoom-in').onclick = () => {
+                store.zoom = Math.min(store.zoom * 1.15, 3.0);
+                renderCanvas();
+            };
+            document.getElementById('btn-zoom-out').onclick = () => {
+                store.zoom = Math.max(store.zoom / 1.15, 0.3);
+                renderCanvas();
+            };
+
+            document.getElementById('btn-toggle-grid').onclick = () => {
+                store.showGrid = !store.showGrid;
+                renderCanvas();
+            };
+
+            const confirmModal = document.getElementById('confirm-modal');
+            const btnCancel = document.getElementById('modal-btn-cancel');
+            const btnConfirm = document.getElementById('modal-btn-confirm');
+
+            document.getElementById('btn-clear').onclick = () => {
+                confirmModal.classList.remove('hidden');
+            };
+
+            btnCancel.onclick = () => {
+                confirmModal.classList.add('hidden');
+            };
+
+            btnConfirm.onclick = () => {
+                confirmModal.classList.add('hidden');
+                store.nodes = [];
+                store.edges = [];
+                store.selectedNodeIds = [];
+                store.selectedEdgeId = null;
+                store.clearLocalStorage();
+                store.saveState();
+                renderCanvas();
+                updateInspector();
+            };
+
+            document.getElementById('btn-export-json').onclick = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                    nodes: store.nodes,
+                    edges: store.edges
+                }, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `flowchart_${Date.now()}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            };
+
+            document.getElementById('file-input-json').onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const parsed = JSON.parse(evt.target.result);
+                        if (parsed.nodes && parsed.edges) {
+                            store.nodes = parsed.nodes;
+                            store.edges = parsed.edges;
+                            store.selectedNodeIds = [];
+                            store.selectedEdgeId = null;
+                            store.saveState();
+                            renderCanvas();
+                            updateInspector();
+                            fitViewToNodes();
+                        }
+                    } catch (err) {
+                        console.error('JSON import error:', err);
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            function getCleanSvgString() {
+                const prevNodes = store.selectedNodeIds;
+                const prevEdge = store.selectedEdgeId;
+                store.selectedNodeIds = [];
+                store.selectedEdgeId = null;
+                renderCanvas();
+
+                const anchorsLayer = document.getElementById('anchors-layer');
+                const tempEdgePath = document.getElementById('temp-edge-path');
+                if (anchorsLayer) anchorsLayer.style.display = 'none';
+                if (tempEdgePath) tempEdgePath.style.display = 'none';
+
+                const svg = document.getElementById('svg-canvas');
+                const svgData = new XMLSerializer().serializeToString(svg);
+
+                if (anchorsLayer) anchorsLayer.style.display = '';
+                if (tempEdgePath) tempEdgePath.style.display = '';
+                store.selectedNodeIds = prevNodes;
+                store.selectedEdgeId = prevEdge;
+                renderCanvas();
+
+                return svgData;
+            }
+
+            document.getElementById('btn-export-png').onclick = () => {
+                const svgData = getCleanSvgString();
+                const svg = document.getElementById('svg-canvas');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+
+                const rect = svg.getBoundingClientRect();
+                canvas.width = rect.width * 2;
+                canvas.height = rect.height * 2;
+
+                img.onload = () => {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.scale(2, 2);
+                    ctx.drawImage(img, 0, 0);
+                    const a = document.createElement('a');
+                    a.download = `flowchart_${Date.now()}.png`;
+                    a.href = canvas.toDataURL('image/png');
+                    a.click();
+                };
+
+                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+            };
+        }
+
+        window.onload = function() {
+            initPalette();
+            setupViewportInteractions();
+            setupToolbar();
+
+            const hasSavedData = store.loadFromLocalStorage();
+            if (hasSavedData) {
+                store.saveState();
+                renderCanvas();
+                updateInspector();
+                fitViewToNodes();
+            } else {
+                loadDefaultTemplate();
+            }
+        };
+    </script>
+</body>
+</html>
