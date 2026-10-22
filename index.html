@@ -595,122 +595,80 @@
             renderAnchors();
         }
 
-       function renderCanvas() {
-    const viewport = document.getElementById('viewport-group');
-    if (viewport) {
-        viewport.setAttribute('transform', `translate(${store.panX}, ${store.panY}) scale(${store.zoom})`);
-    }
+        function renderEdges() {
+            const layer = document.getElementById('edges-layer');
+            layer.innerHTML = '';
 
-    const zoomText = document.getElementById('zoom-level-text');
-    if (zoomText) {
-        zoomText.textContent = `${Math.round(store.zoom * 100)}%`;
-    }
+            store.edges.forEach(edge => {
+                const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
+                const targetNode = store.nodes.find(n => n.id === edge.targetId);
+                if (!sourceNode || !targetNode) return;
 
-    const container = document.getElementById('canvas-container');
-    if (container) {
-        if (store.showGrid) {
-            container.classList.remove('no-grid');
-        } else {
-            container.classList.add('no-grid');
+                const startPt = getAnchorCoordinates(sourceNode, edge.sourceAnchor);
+                const endPt = getAnchorCoordinates(targetNode, edge.targetAnchor);
+
+                const pathD = calculateEdgePath(startPt, endPt, edge.sourceAnchor, edge.targetAnchor, edge.type);
+                const isSelected = store.selectedEdgeId === edge.id;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'cursor-pointer group');
+                g.onclick = (e) => {
+                    e.stopPropagation();
+                    store.selectedEdgeId = edge.id;
+                    store.selectedNodeIds = [];
+                    renderCanvas();
+                    updateInspector();
+                };
+
+                const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                hitPath.setAttribute('d', pathD);
+                hitPath.setAttribute('fill', 'none');
+                hitPath.setAttribute('stroke', 'transparent');
+                hitPath.setAttribute('stroke-width', '14');
+
+                const visiblePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                visiblePath.setAttribute('d', pathD);
+                visiblePath.setAttribute('fill', 'none');
+                visiblePath.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
+                visiblePath.setAttribute('stroke-width', isSelected ? '2.5' : '1.8');
+                visiblePath.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
+                visiblePath.setAttribute('class', 'transition-all duration-150');
+
+                g.appendChild(hitPath);
+                g.appendChild(visiblePath);
+
+                if (edge.label && edge.label.trim() !== '') {
+                    const midPt = getPathMidPoint(startPt, endPt, pathD);
+                    const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
+                    text.setAttribute('x', midPt.x);
+                    text.setAttribute('y', midPt.y);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'central');
+                    text.setAttribute('fill', isSelected ? '#2563eb' : '#334155');
+                    text.setAttribute('font-size', '11');
+                    text.setAttribute('font-weight', '600');
+                    text.textContent = edge.label;
+
+                    const labelWidth = edge.label.length * 8 + 10;
+                    textBg.setAttribute('x', midPt.x - labelWidth / 2);
+                    textBg.setAttribute('y', midPt.y - 9);
+                    textBg.setAttribute('width', labelWidth);
+                    textBg.setAttribute('height', '18');
+                    textBg.setAttribute('rx', '4');
+                    textBg.setAttribute('fill', '#ffffff');
+                    textBg.setAttribute('stroke', isSelected ? '#93c5fd' : '#cbd5e1');
+                    textBg.setAttribute('stroke-width', '1');
+
+                    g.appendChild(textBg);
+                    g.appendChild(text);
+                }
+
+                layer.appendChild(g);
+            });
         }
-    }
 
-    // 接続線（エッジ）の描画
-    const edgesLayer = document.getElementById('edges-layer');
-    if (edgesLayer) {
-        edgesLayer.innerHTML = '';
-store.edges.forEach(edge => {
-    const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
-    const targetNode = store.nodes.find(n => n.id === edge.targetId);
-    if (!sourceNode || !targetNode) return;
-
-    const startPt = getAnchorCoordinates(sourceNode, edge.sourceAnchor);
-    const endPt = getAnchorCoordinates(targetNode, edge.targetAnchor);
-
-    const pathD = calculateEdgePath(startPt, endPt, edge.sourceAnchor, edge.targetAnchor, edge.type);
-    const isSelected = store.selectedEdgeId === edge.id;
-
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'cursor-pointer group');
-    g.onclick = (e) => {
-        e.stopPropagation();
-        store.selectedEdgeId = edge.id;
-        store.selectedNodeIds = [];
-        renderCanvas();
-        updateInspector();
-    };
-
-    // 1. 接続線（パス）の描画
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', pathD);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
-    path.setAttribute('stroke-width', isSelected ? '3' : '2');
-    path.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
-    g.appendChild(path);
-
-    // 2. 線上中央に背景付きでテキスト（YES/NOなど）を表示
-    if (edge.label && edge.label.trim() !== '') {
-        // 直角（クランク）線・直線に応じた正確な中間位置の計算
-        let labelX, labelY;
-        if (edge.type === 'straight') {
-            labelX = (startPt.x + endPt.x) / 2;
-            labelY = (startPt.y + endPt.y) / 2;
-        } else {
-            // 右に迂回して上/下に走るような折れ線の場合、中央の長い直線の上に配置
-            const midY = (startPt.y + endPt.y) / 2;
-            if (Math.abs(startPt.x - endPt.x) > 20) {
-                labelX = (startPt.x + endPt.x) / 2;
-                labelY = midY;
-            } else {
-                labelX = startPt.x;
-                labelY = midY;
-            }
-        }
-
-        const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-        const textLen = edge.label.length;
-        const width = Math.max(28, textLen * 11 + 12);
-        const height = 20;
-
-        // 白背景 (<rect>)
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('x', labelX - width / 2);
-        rect.setAttribute('y', labelY - height / 2);
-        rect.setAttribute('width', width);
-        rect.setAttribute('height', height);
-        rect.setAttribute('rx', '4');
-        rect.setAttribute('fill', '#ffffff');
-        rect.setAttribute('stroke', isSelected ? '#3b82f6' : '#cbd5e1');
-        rect.setAttribute('stroke-width', '1');
-
-        // 線上テキスト (<text>)
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', labelX);
-        text.setAttribute('y', labelY);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'central');
-        text.setAttribute('fill', '#1e293b');
-        text.setAttribute('font-size', '11px');
-        text.setAttribute('font-weight', '600');
-        text.style.pointerEvents = 'none';
-        text.textContent = edge.label;
-
-        labelGroup.appendChild(rect);
-        labelGroup.appendChild(text);
-        g.appendChild(labelGroup);
-    }
-
-    edgesLayer.appendChild(g);
-});
-    }
-
-    // ノードの描画処理（もし別関数で定義されている場合はそのまま呼び出し）
-    if (typeof renderNodes === 'function') {
-        renderNodes();
-    }
-}
         function calculateEdgePath(start, end, sAnchor, tAnchor, type) {
             if (type === 'straight') {
                 return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
