@@ -600,25 +600,78 @@
             layer.innerHTML = '';
 
             store.edges.forEach(edge => {
-                const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
-                const targetNode = store.nodes.find(n => n.id === edge.targetId);
-                if (!sourceNode || !targetNode) return;
+    const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
+    const targetNode = store.nodes.find(n => n.id === edge.targetId);
+    if (!sourceNode || !targetNode) return;
 
-                const startPt = getAnchorCoordinates(sourceNode, edge.sourceAnchor);
-                const endPt = getAnchorCoordinates(targetNode, edge.targetAnchor);
+    const startPt = getAnchorCoordinates(sourceNode, edge.sourceAnchor);
+    const endPt = getAnchorCoordinates(targetNode, edge.targetAnchor);
 
-                const pathD = calculateEdgePath(startPt, endPt, edge.sourceAnchor, edge.targetAnchor, edge.type);
-                const isSelected = store.selectedEdgeId === edge.id;
+    const pathD = calculateEdgePath(startPt, endPt, edge.sourceAnchor, edge.targetAnchor, edge.type);
+    const isSelected = store.selectedEdgeId === edge.id;
 
-                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                g.setAttribute('class', 'cursor-pointer group');
-                g.onclick = (e) => {
-                    e.stopPropagation();
-                    store.selectedEdgeId = edge.id;
-                    store.selectedNodeIds = [];
-                    renderCanvas();
-                    updateInspector();
-                };
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'cursor-pointer group');
+    g.onclick = (e) => {
+        e.stopPropagation();
+        store.selectedEdgeId = edge.id;
+        store.selectedNodeIds = [];
+        renderCanvas();
+        updateInspector();
+    };
+
+    // 1. 接続線（パス）の描画
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
+    path.setAttribute('stroke-width', isSelected ? '3' : '2');
+    path.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
+    g.appendChild(path);
+
+    // ★【ここを追加】線上に背景付きでテキスト（Yes/Noなど）を表示
+    if (edge.label && edge.label.trim() !== '') {
+        // 中間地点の計算
+        const midX = (startPt.x + endPt.x) / 2;
+        const midY = (startPt.y + endPt.y) / 2;
+
+        const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        // 文字数に応じた白背景ボックスのサイズ計算
+        const textLen = edge.label.length;
+        const width = Math.max(28, textLen * 11 + 12);
+        const height = 20;
+
+        // 白背景 (<rect>)：線や図形と被っても文字が読めるようにする
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', midX - width / 2);
+        rect.setAttribute('y', midY - height / 2);
+        rect.setAttribute('width', width);
+        rect.setAttribute('height', height);
+        rect.setAttribute('rx', '4');
+        rect.setAttribute('fill', '#ffffff');
+        rect.setAttribute('stroke', isSelected ? '#3b82f6' : '#cbd5e1');
+        rect.setAttribute('stroke-width', '1');
+
+        // 線上中央のテキスト (<text>)
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', midX);
+        text.setAttribute('y', midY);
+        text.setAttribute('text-anchor', 'middle'); // 左右中央揃え
+        text.setAttribute('dominant-baseline', 'central'); // 上下中央揃え
+        text.setAttribute('fill', '#1e293b');
+        text.setAttribute('font-size', '11px');
+        text.setAttribute('font-weight', '600');
+        text.style.pointerEvents = 'none';
+        text.textContent = edge.label;
+
+        labelGroup.appendChild(rect);
+        labelGroup.appendChild(text);
+        g.appendChild(labelGroup);
+    }
+
+    edgesLayer.appendChild(g);
+});
 
                 const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 hitPath.setAttribute('d', pathD);
