@@ -289,1345 +289,653 @@
         </div>
     </div>
 
-    <script>
-        const JIS_SHAPES = [
-            { type: 'terminal', name: '端子 (Terminal)', desc: '開始・終了', defaultLabel: '開始', rule: '1つのフローにつき「開始」と「終了」を必ず1個ずつ配置する。' },
-            { type: 'process', name: '処理 (Process)', desc: '代入・計算', defaultLabel: '処理', rule: '枠内には1つの処理のみ記載。線の出入りは原則「入る線1本・出る線1本」。' },
-            { type: 'decision', name: '判断 (Decision)', desc: '条件分岐', defaultLabel: '条件判断?', rule: '枠内に条件式を書く。ひし形から出る線には必ず「YES/NO」のラベルを書く。' },
-            { type: 'data', name: 'データ (Data I/O)', desc: 'データ入出力', defaultLabel: 'データ入力', rule: '「キーボード入力」「画面表示」など具体的な入出力内容を記載する。' },
-            { type: 'loop-start', name: 'ループ開始', desc: '繰り返し起点', defaultLabel: 'ループ開始', rule: '繰り返しの条件を記述し、必ず「ループ終了」とペアで使用する。' },
-            { type: 'loop-end', name: 'ループ終了', desc: '繰り返し終端', defaultLabel: 'ループ終了', rule: '「ループ開始」と本記号の間に配置された処理が繰り返し実行される。' },
-            { type: 'document', name: '書類 (Document)', desc: '帳票・印刷', defaultLabel: '書類出力', rule: 'PDF出力や紙の伝票発行など、ドキュメントの印刷・出力処理に使用する。' },
-            { type: 'subroutine', name: '定義済み処理', desc: 'サブルーチン', defaultLabel: 'サブ処理', rule: '共通化された別のフローチャート（関数）を呼び出す際に使用する。' },
-            { type: 'connector', name: '結合手 (Connector)', desc: 'フローの中継点', defaultLabel: '1', rule: '円の中に数字を入れて、離れた場所にある同じ数字の結合手へジャンプさせる。' }
-        ];
+   <script>
+    const JIS_SHAPES = [
+        { type: 'terminal', name: '端子 (Terminal)', desc: '開始・終了', defaultLabel: '開始', rule: '1つのフローにつき「開始」と「終了」を必ず1個ずつ配置する。' },
+        { type: 'process', name: '処理 (Process)', desc: '代入・計算', defaultLabel: '処理', rule: '枠内には1つの処理のみ記載。線の出入りは原則「入る線1本・出る線1本」。' },
+        { type: 'decision', name: '判断 (Decision)', desc: '条件分岐', defaultLabel: '条件判断?', rule: '枠内に条件式を書く。ひし形から出る線には必ず「YES/NO」のラベルを書く。' },
+        { type: 'data', name: 'データ (Data I/O)', desc: 'データ入出力', defaultLabel: 'データ入力', rule: '「キーボード入力」「画面表示」など具体的な入出力内容を記載する。' },
+        { type: 'loop-start', name: 'ループ開始', desc: '繰り返し起点', defaultLabel: 'ループ開始', rule: '繰り返しの条件を記述し、必ず「ループ終了」とペアで使用する。' },
+        { type: 'loop-end', name: 'ループ終了', desc: '繰り返し終端', defaultLabel: 'ループ終了', rule: '「ループ開始」と本記号の間に配置された処理が繰り返し実行される。' },
+        { type: 'document', name: '書類 (Document)', desc: '帳票・印刷', defaultLabel: '書類出力', rule: 'PDF出力や紙の伝票発行など、ドキュメントの印刷・出力処理に使用する。' },
+        { type: 'subroutine', name: '定義済み処理', desc: 'サブルーチン', defaultLabel: 'サブ処理', rule: '共通化された別のフローチャート（関数）を呼び出す際に使用する。' },
+        { type: 'connector', name: '結合手 (Connector)', desc: 'フローの中継点', defaultLabel: '1', rule: '円の中に数字を入れて、離れた場所にある同じ数字の結合手へジャンプさせる。' }
+    ];
 
-        const LOCAL_STORAGE_KEY = 'jis_flowchart_studio_data_v1';
+    const LOCAL_STORAGE_KEY = 'jis_flowchart_studio_data_v1';
 
-        const store = {
-            nodes: [],
-            edges: [],
-            selectedNodeIds: [],
-            selectedEdgeId: null,
-            clipboard: null,
-            
-            zoom: 1.0,
-            panX: 0,
-            panY: 0,
-            showGrid: true,
-            snapToGrid: true,
-            gridSize: 20,
+    const store = {
+        nodes: [],
+        edges: [],
+        selectedNodeIds: [],
+        selectedEdgeId: null,
+        clipboard: null,
+        
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+        showGrid: true,
+        snapToGrid: true,
+        gridSize: 20,
 
-            isPanning: false,
-            isSelecting: false,
-            selectStart: { x: 0, y: 0 },
-            panStart: { x: 0, y: 0 },
-            isConnecting: false,
-            connectStart: null,
-            pinchDist: 0,
+        isPanning: false,
+        isSelecting: false,
+        selectStart: { x: 0, y: 0 },
+        panStart: { x: 0, y: 0 },
+        isConnecting: false,
+        connectStart: null,
+        pinchDist: 0,
 
-            history: [],
-            historyIndex: -1,
-            maxHistory: 30,
+        history: [],
+        historyIndex: -1,
+        maxHistory: 30,
 
-            nextId: Date.now(),
-            generateId() { return 'elem_' + (this.nextId++); },
+        nextId: Date.now(),
+        generateId() { return 'elem_' + (this.nextId++); },
 
-            saveToLocalStorage() {
-                try {
-                    const payload = {
-                        nodes: this.nodes,
-                        edges: this.edges,
-                        updatedAt: Date.now()
-                    };
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
-                    this.showSaveBadge();
-                } catch (e) {
-                    console.warn('LocalStorage save failed:', e);
-                }
-            },
-
-            loadFromLocalStorage() {
-                try {
-                    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-                    if (!raw) return false;
-                    const parsed = JSON.parse(raw);
-                    if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
-                        this.nodes = parsed.nodes;
-                        this.edges = parsed.edges;
-                        return true;
-                    }
-                } catch (e) {
-                    console.warn('LocalStorage load failed:', e);
-                }
-                return false;
-            },
-
-            clearLocalStorage() {
-                try {
-                    localStorage.removeItem(LOCAL_STORAGE_KEY);
-                } catch (e) {
-                    console.warn('LocalStorage clear failed:', e);
-                }
-            },
-
-            showSaveBadge() {
-                const badge = document.getElementById('autosave-status');
-                if (badge) {
-                    badge.classList.remove('opacity-50');
-                    setTimeout(() => badge.classList.add('opacity-100'), 50);
-                }
-            },
-
-            saveState() {
-                if (this.historyIndex < this.history.length - 1) {
-                    this.history = this.history.slice(0, this.historyIndex + 1);
-                }
-                const state = {
-                    nodes: JSON.parse(JSON.stringify(this.nodes)),
-                    edges: JSON.parse(JSON.stringify(this.edges))
+        saveToLocalStorage() {
+            try {
+                const payload = {
+                    nodes: this.nodes,
+                    edges: this.edges,
+                    updatedAt: Date.now()
                 };
-                this.history.push(state);
-                if (this.history.length > this.maxHistory) {
-                    this.history.shift();
-                } else {
-                    this.historyIndex++;
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+                this.showSaveBadge();
+            } catch (e) {
+                console.warn('LocalStorage save failed:', e);
+            }
+        },
+
+        loadFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (!raw) return false;
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+                    this.nodes = parsed.nodes;
+                    this.edges = parsed.edges;
+                    return true;
                 }
-                
+            } catch (e) {
+                console.warn('LocalStorage load failed:', e);
+            }
+            return false;
+        },
+
+        clearLocalStorage() {
+            try {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+            } catch (e) {
+                console.warn('LocalStorage clear failed:', e);
+            }
+        },
+
+        showSaveBadge() {
+            const badge = document.getElementById('autosave-status');
+            if (badge) {
+                badge.classList.remove('opacity-50');
+                setTimeout(() => badge.classList.add('opacity-100'), 50);
+            }
+        },
+
+        saveState() {
+            if (this.historyIndex < this.history.length - 1) {
+                this.history = this.history.slice(0, this.historyIndex + 1);
+            }
+            const state = {
+                nodes: JSON.parse(JSON.stringify(this.nodes)),
+                edges: JSON.parse(JSON.stringify(this.edges))
+            };
+            this.history.push(state);
+            if (this.history.length > this.maxHistory) {
+                this.history.shift();
+            } else {
+                this.historyIndex++;
+            }
+            
+            this.saveToLocalStorage();
+            updateUndoRedoButtons();
+        },
+
+        undo() {
+            if (this.historyIndex > 0) {
+                this.historyIndex--;
+                const state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                this.nodes = state.nodes;
+                this.edges = state.edges;
+                this.selectedNodeIds = [];
+                this.selectedEdgeId = null;
                 this.saveToLocalStorage();
+                renderCanvas();
+                updateInspector();
                 updateUndoRedoButtons();
-            },
-
-            undo() {
-                if (this.historyIndex > 0) {
-                    this.historyIndex--;
-                    const state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-                    this.nodes = state.nodes;
-                    this.edges = state.edges;
-                    this.selectedNodeIds = [];
-                    this.selectedEdgeId = null;
-                    this.saveToLocalStorage();
-                    renderCanvas();
-                    updateInspector();
-                    updateUndoRedoButtons();
-                }
-            },
-
-            redo() {
-                if (this.historyIndex < this.history.length - 1) {
-                    this.historyIndex++;
-                    const state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-                    this.nodes = state.nodes;
-                    this.edges = state.edges;
-                    this.selectedNodeIds = [];
-                    this.selectedEdgeId = null;
-                    this.saveToLocalStorage();
-                    renderCanvas();
-                    updateInspector();
-                    updateUndoRedoButtons();
-                }
-            },
-
-            selectAll() {
-                this.selectedNodeIds = this.nodes.map(n => n.id);
-                this.selectedEdgeId = null;
-                renderCanvas();
-                updateInspector();
-            },
-
-            copySelected() {
-                if (this.selectedNodeIds.length === 0) return;
-                const nodesToCopy = this.nodes.filter(n => this.selectedNodeIds.includes(n.id));
-                const edgesToCopy = this.edges.filter(e => 
-                    this.selectedNodeIds.includes(e.sourceId) && this.selectedNodeIds.includes(e.targetId)
-                );
-                this.clipboard = JSON.parse(JSON.stringify({ nodes: nodesToCopy, edges: edgesToCopy }));
-            },
-
-            pasteClipboard() {
-                if (!this.clipboard || this.clipboard.nodes.length === 0) return;
-
-                const idMap = {};
-                const newNodes = [];
-
-                this.clipboard.nodes.forEach(node => {
-                    const newId = this.generateId();
-                    idMap[node.id] = newId;
-                    const cloned = JSON.parse(JSON.stringify(node));
-                    cloned.id = newId;
-                    cloned.x += 30;
-                    cloned.y += 30;
-                    newNodes.push(cloned);
-                });
-
-                const newEdges = [];
-                this.clipboard.edges.forEach(edge => {
-                    if (idMap[edge.sourceId] && idMap[edge.targetId]) {
-                        const cloned = JSON.parse(JSON.stringify(edge));
-                        cloned.id = this.generateId();
-                        cloned.sourceId = idMap[edge.sourceId];
-                        cloned.targetId = idMap[edge.targetId];
-                        newEdges.push(cloned);
-                    }
-                });
-
-                this.nodes.push(...newNodes);
-                this.edges.push(...newEdges);
-                this.selectedNodeIds = newNodes.map(n => n.id);
-                this.selectedEdgeId = null;
-
-                this.clipboard = JSON.parse(JSON.stringify({ nodes: newNodes, edges: newEdges }));
-
-                this.saveState();
-                renderCanvas();
-                updateInspector();
-            },
-
-            deleteSelected() {
-                if (this.selectedNodeIds.length > 0) {
-                    this.nodes = this.nodes.filter(n => !this.selectedNodeIds.includes(n.id));
-                    this.edges = this.edges.filter(e => 
-                        !this.selectedNodeIds.includes(e.sourceId) && !this.selectedNodeIds.includes(e.targetId)
-                    );
-                    this.selectedNodeIds = [];
-                }
-                if (this.selectedEdgeId) {
-                    this.edges = this.edges.filter(e => e.id !== this.selectedEdgeId);
-                    this.selectedEdgeId = null;
-                }
-                this.saveState();
-                renderCanvas();
-                updateInspector();
             }
-        };
+        },
 
-        function initPalette() {
-            const container = document.getElementById('palette-container');
-            container.innerHTML = '';
-
-            JIS_SHAPES.forEach(shape => {
-                const item = document.createElement('div');
-                item.className = 'p-2.5 bg-slate-50 hover:bg-indigo-50/70 border border-slate-200 hover:border-indigo-300 rounded-lg cursor-grab transition flex items-center gap-3 group';
-                item.setAttribute('draggable', 'true');
-
-                const previewSvg = getShapePreviewSvg(shape.type);
-
-                item.innerHTML = `
-                    <div class="w-9 h-8 bg-white border border-slate-200 rounded flex items-center justify-center shrink-0 group-hover:border-indigo-400 shadow-2xs">
-                        ${previewSvg}
-                    </div>
-                    <div class="overflow-hidden">
-                        <div class="text-xs font-semibold text-slate-700 group-hover:text-indigo-900 truncate">${shape.name}</div>
-                        <div class="text-[10px] text-slate-400 truncate">${shape.desc}</div>
-                    </div>
-                `;
-
-                item.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('shapeType', shape.type);
-                });
-
-                item.addEventListener('click', () => {
-                    addNodeToCanvas(shape.type, 350, 250);
-                });
-
-                container.appendChild(item);
-            });
-        }
-
-        function getShapePreviewSvg(type) {
-            const stroke = "#475569";
-            const fill = "#f8fafc";
-            switch(type) {
-                case 'terminal':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'process':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'decision':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="20,2 38,12 20,22 2,12" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'data':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="8,2 38,2 32,22 2,22" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'loop-start':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="8,2 32,2 38,8 38,22 2,22 2,8" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'loop-end':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="2,2 38,2 38,16 32,22 8,22 2,16" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'document':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><path d="M 2 2 L 38 2 L 38 18 Q 28 24 18 18 Q 10 14 2 20 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                case 'subroutine':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="22" stroke="${stroke}" stroke-width="1.5"/><line x1="32" y1="2" x2="32" y2="22" stroke="${stroke}" stroke-width="1.5"/></svg>`;
-                case 'connector':
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><circle cx="20" cy="12" r="9" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
-                default:
-                    return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+        redo() {
+            if (this.historyIndex < this.history.length - 1) {
+                this.historyIndex++;
+                const state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                this.nodes = state.nodes;
+                this.edges = state.edges;
+                this.selectedNodeIds = [];
+                this.selectedEdgeId = null;
+                this.saveToLocalStorage();
+                renderCanvas();
+                updateInspector();
+                updateUndoRedoButtons();
             }
-        }
+        },
 
-        function loadDefaultTemplate() {
-            store.nodes = [
-                { id: 'node_start', type: 'terminal', label: '開始', x: 400, y: 120, width: 110, height: 48, fontSize: 14, strokeWidth: 2, color: 'white' },
-                { id: 'node_end', type: 'terminal', label: '終了', x: 400, y: 280, width: 110, height: 48, fontSize: 14, strokeWidth: 2, color: 'white' }
-            ];
-
-            store.edges = [
-                { id: 'edge_1', sourceId: 'node_start', sourceAnchor: 'bottom', targetId: 'node_end', targetAnchor: 'top', label: '', type: 'orthogonal' }
-            ];
-
-            store.saveState();
+        selectAll() {
+            this.selectedNodeIds = this.nodes.map(n => n.id);
+            this.selectedEdgeId = null;
             renderCanvas();
             updateInspector();
-            fitViewToNodes();
+        },
+
+        copySelected() {
+            if (this.selectedNodeIds.length === 0) return;
+            const nodesToCopy = this.nodes.filter(n => this.selectedNodeIds.includes(n.id));
+            const edgesToCopy = this.edges.filter(e => 
+                this.selectedNodeIds.includes(e.sourceId) && this.selectedNodeIds.includes(e.targetId)
+            );
+            this.clipboard = JSON.parse(JSON.stringify({ nodes: nodesToCopy, edges: edgesToCopy }));
+        },
+
+        pasteClipboard() {
+            if (!this.clipboard || this.clipboard.nodes.length === 0) return;
+
+            const idMap = {};
+            const newNodes = [];
+
+            this.clipboard.nodes.forEach(node => {
+                const newId = this.generateId();
+                idMap[node.id] = newId;
+                const cloned = JSON.parse(JSON.stringify(node));
+                cloned.id = newId;
+                cloned.x += 30;
+                cloned.y += 30;
+                newNodes.push(cloned);
+            });
+
+            const newEdges = [];
+            this.clipboard.edges.forEach(edge => {
+                if (idMap[edge.sourceId] && idMap[edge.targetId]) {
+                    const cloned = JSON.parse(JSON.stringify(edge));
+                    cloned.id = this.generateId();
+                    cloned.sourceId = idMap[edge.sourceId];
+                    cloned.targetId = idMap[edge.targetId];
+                    newEdges.push(cloned);
+                }
+            });
+
+            this.nodes.push(...newNodes);
+            this.edges.push(...newEdges);
+            this.selectedNodeIds = newNodes.map(n => n.id);
+            this.selectedEdgeId = null;
+
+            this.clipboard = JSON.parse(JSON.stringify({ nodes: newNodes, edges: newEdges }));
+
+            this.saveState();
+            renderCanvas();
+            updateInspector();
+        },
+
+        deleteSelected() {
+            if (this.selectedNodeIds.length > 0) {
+                this.nodes = this.nodes.filter(n => !this.selectedNodeIds.includes(n.id));
+                this.edges = this.edges.filter(e => 
+                    !this.selectedNodeIds.includes(e.sourceId) && !this.selectedNodeIds.includes(e.targetId)
+                );
+                this.selectedNodeIds = [];
+            }
+            if (this.selectedEdgeId) {
+                this.edges = this.edges.filter(e => e.id !== this.selectedEdgeId);
+                this.selectedEdgeId = null;
+            }
+            this.saveState();
+            renderCanvas();
+            updateInspector();
+        }
+    };
+
+    function initPalette() {
+        const container = document.getElementById('palette-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        JIS_SHAPES.forEach(shape => {
+            const item = document.createElement('div');
+            item.className = 'p-2.5 bg-slate-50 hover:bg-indigo-50/70 border border-slate-200 hover:border-indigo-300 rounded-lg cursor-grab transition flex items-center gap-3 group';
+            item.setAttribute('draggable', 'true');
+
+            const previewSvg = getShapePreviewSvg(shape.type);
+
+            item.innerHTML = `
+                <div class="w-9 h-8 bg-white border border-slate-200 rounded flex items-center justify-center shrink-0 group-hover:border-indigo-400 shadow-2xs">
+                    ${previewSvg}
+                </div>
+                <div class="overflow-hidden">
+                    <div class="text-xs font-semibold text-slate-700 group-hover:text-indigo-900 truncate">${shape.name}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${shape.desc}</div>
+                </div>
+            `;
+
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('shapeType', shape.type);
+            });
+
+            item.addEventListener('click', () => {
+                addNodeToCanvas(shape.type, 350, 250);
+            });
+
+            container.appendChild(item);
+        });
+    }
+
+    function getShapePreviewSvg(type) {
+        const stroke = "#475569";
+        const fill = "#f8fafc";
+        switch(type) {
+            case 'terminal':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'process':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'decision':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="20,2 38,12 20,22 2,12" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'data':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="8,2 38,2 32,22 2,22" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'loop-start':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="8,2 32,2 38,8 38,22 2,22 2,8" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'loop-end':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><polygon points="2,2 38,2 38,16 32,22 8,22 2,16" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'document':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><path d="M 2 2 L 38 2 L 38 18 Q 28 24 18 18 Q 10 14 2 20 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            case 'subroutine':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="22" stroke="${stroke}" stroke-width="1.5"/><line x1="32" y1="2" x2="32" y2="22" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+            case 'connector':
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><circle cx="20" cy="12" r="9" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+            default:
+                return `<svg class="w-7 h-5" viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`;
+        }
+    }
+
+    function addNodeToCanvas(type, x, y) {
+        const shapeDef = JIS_SHAPES.find(s => s.type === type) || {};
+        const newNode = {
+            id: store.generateId(),
+            type: type,
+            label: shapeDef.defaultLabel || 'ラベル',
+            x: x,
+            y: y,
+            width: type === 'connector' ? 48 : 120,
+            height: type === 'connector' ? 48 : 50,
+            fontSize: 14,
+            strokeWidth: 2,
+            color: 'white'
+        };
+        store.nodes.push(newNode);
+        store.selectedNodeIds = [newNode.id];
+        store.selectedEdgeId = null;
+        store.saveState();
+        renderCanvas();
+        updateInspector();
+    }
+
+    function loadDefaultTemplate() {
+        store.nodes = [
+            { id: 'node_start', type: 'terminal', label: '開始', x: 400, y: 120, width: 110, height: 48, fontSize: 14, strokeWidth: 2, color: 'white' },
+            { id: 'node_end', type: 'terminal', label: '終了', x: 400, y: 280, width: 110, height: 48, fontSize: 14, strokeWidth: 2, color: 'white' }
+        ];
+
+        store.edges = [
+            { id: 'edge_1', sourceId: 'node_start', sourceAnchor: 'bottom', targetId: 'node_end', targetAnchor: 'top', label: '', type: 'orthogonal' }
+        ];
+
+        store.saveState();
+        renderCanvas();
+        updateInspector();
+    }
+
+    function getAnchorPosition(node, anchorName) {
+        const cx = node.x;
+        const cy = node.y;
+        const hw = node.width / 2;
+        const hh = node.height / 2;
+
+        switch (anchorName) {
+            case 'top': return { x: cx, y: cy - hh };
+            case 'bottom': return { x: cx, y: cy + hh };
+            case 'left': return { x: cx - hw, y: cy };
+            case 'right': return { x: cx + hw, y: cy };
+            default: return { x: cx, y: cy };
+        }
+    }
+
+    function calculateEdgePath(startPt, endPt, type) {
+        const midX = (startPt.x + endPt.x) / 2;
+        const midY = (startPt.y + endPt.y) / 2;
+
+        if (type === 'straight') {
+            return {
+                pathD: `M ${startPt.x} ${startPt.y} L ${endPt.x} ${endPt.y}`,
+                midX,
+                midY
+            };
         }
 
-        function renderCanvas() {
-            const viewport = document.getElementById('viewport-group');
+        // 直角（クランク）線
+        const pathD = `M ${startPt.x} ${startPt.y} L ${startPt.x} ${midY} L ${endPt.x} ${midY} L ${endPt.x} ${endPt.y}`;
+        return { pathD, midX, midY };
+    }
+
+    function renderCanvas() {
+        const viewport = document.getElementById('viewport-group');
+        if (viewport) {
             viewport.setAttribute('transform', `translate(${store.panX}, ${store.panY}) scale(${store.zoom})`);
+        }
 
-            document.getElementById('zoom-level-text').textContent = `${Math.round(store.zoom * 100)}%`;
+        const zoomText = document.getElementById('zoom-level-text');
+        if (zoomText) {
+            zoomText.textContent = `${Math.round(store.zoom * 100)}%`;
+        }
 
-            const container = document.getElementById('canvas-container');
+        const container = document.getElementById('canvas-container');
+        if (container) {
             if (store.showGrid) {
                 container.classList.remove('no-grid');
             } else {
                 container.classList.add('no-grid');
             }
-
-            renderEdges();
-            renderNodes();
-            renderAnchors();
         }
 
-        function renderEdges() {
-            const layer = document.getElementById('edges-layer');
-            layer.innerHTML = '';
+        renderEdges();
+        renderNodes();
+    }
 
-            store.edges.forEach(edge => {
-                const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
-                const targetNode = store.nodes.find(n => n.id === edge.targetId);
-                if (!sourceNode || !targetNode) return;
+    // ★【接続線のレンダリング処理（線上表示・被り防止の修正適用済み）】★
+    function renderEdges() {
+        const edgesLayer = document.getElementById('edges-layer');
+        if (!edgesLayer) return;
+        edgesLayer.innerHTML = '';
 
-                const startPt = getAnchorCoordinates(sourceNode, edge.sourceAnchor);
-                const endPt = getAnchorCoordinates(targetNode, edge.targetAnchor);
+        store.edges.forEach(edge => {
+            const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
+            const targetNode = store.nodes.find(n => n.id === edge.targetId);
+            if (!sourceNode || !targetNode) return;
 
-                const pathD = calculateEdgePath(startPt, endPt, edge.sourceAnchor, edge.targetAnchor, edge.type);
-                const isSelected = store.selectedEdgeId === edge.id;
+            const startPt = getAnchorPosition(sourceNode, edge.sourceAnchor || 'bottom');
+            const endPt = getAnchorPosition(targetNode, edge.targetAnchor || 'top');
+            const { pathD, midX, midY } = calculateEdgePath(startPt, endPt, edge.type);
 
-                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                g.setAttribute('class', 'cursor-pointer group');
-                g.onclick = (e) => {
-                    e.stopPropagation();
-                    store.selectedEdgeId = edge.id;
-                    store.selectedNodeIds = [];
-                    renderCanvas();
-                    updateInspector();
-                };
+            const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            edgeGroup.setAttribute('data-edge-id', edge.id);
+            edgeGroup.classList.add('cursor-pointer');
 
-                const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                hitPath.setAttribute('d', pathD);
-                hitPath.setAttribute('fill', 'none');
-                hitPath.setAttribute('stroke', 'transparent');
-                hitPath.setAttribute('stroke-width', '14');
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathD);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', store.selectedEdgeId === edge.id ? '#3b82f6' : '#334155');
+            path.setAttribute('stroke-width', store.selectedEdgeId === edge.id ? '2.5' : '2');
+            path.setAttribute('marker-end', store.selectedEdgeId === edge.id ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
 
-                const visiblePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                visiblePath.setAttribute('d', pathD);
-                visiblePath.setAttribute('fill', 'none');
-                visiblePath.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
-                visiblePath.setAttribute('stroke-width', isSelected ? '2.5' : '1.8');
-                visiblePath.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
-                visiblePath.setAttribute('class', 'transition-all duration-150');
-
-                g.appendChild(hitPath);
-                g.appendChild(visiblePath);
-
-                if (edge.label && edge.label.trim() !== '') {
-                    const midPt = getPathMidPoint(startPt, endPt, pathD);
-                    const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-
-                    text.setAttribute('x', midPt.x);
-                    text.setAttribute('y', midPt.y);
-                    text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('dominant-baseline', 'central');
-                    text.setAttribute('fill', isSelected ? '#2563eb' : '#334155');
-                    text.setAttribute('font-size', '11');
-                    text.setAttribute('font-weight', '600');
-                    text.textContent = edge.label;
-
-                    const labelWidth = edge.label.length * 8 + 10;
-                    textBg.setAttribute('x', midPt.x - labelWidth / 2);
-                    textBg.setAttribute('y', midPt.y - 9);
-                    textBg.setAttribute('width', labelWidth);
-                    textBg.setAttribute('height', '18');
-                    textBg.setAttribute('rx', '4');
-                    textBg.setAttribute('fill', '#ffffff');
-                    textBg.setAttribute('stroke', isSelected ? '#93c5fd' : '#cbd5e1');
-                    textBg.setAttribute('stroke-width', '1');
-
-                    g.appendChild(textBg);
-                    g.appendChild(text);
-                }
-
-                layer.appendChild(g);
+            path.addEventListener('click', (e) => {
+                e.stopPropagation();
+                store.selectedEdgeId = edge.id;
+                store.selectedNodeIds = [];
+                renderCanvas();
+                updateInspector();
             });
-        }
 
-        function calculateEdgePath(start, end, sAnchor, tAnchor, type) {
-            if (type === 'straight') {
-                return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+            edgeGroup.appendChild(path);
+
+            // 線上に背景ボックス付きでラベルを表示する処理
+            if (edge.label && edge.label.trim() !== '') {
+                const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                const textLen = edge.label.length;
+                const width = Math.max(28, textLen * 11 + 12);
+                const height = 20;
+
+                // 白背景 (<rect>)
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', midX - width / 2);
+                rect.setAttribute('y', midY - height / 2);
+                rect.setAttribute('width', width);
+                rect.setAttribute('height', height);
+                rect.setAttribute('rx', '4');
+                rect.setAttribute('fill', '#ffffff');
+                rect.setAttribute('stroke', store.selectedEdgeId === edge.id ? '#3b82f6' : '#cbd5e1');
+                rect.setAttribute('stroke-width', '1');
+
+                // 線上テキスト (<text>)
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', midX);
+                text.setAttribute('y', midY);
+                text.setAttribute('text-anchor', 'middle'); // 左右中央
+                text.setAttribute('dominant-baseline', 'central'); // 上下中央
+                text.setAttribute('fill', '#1e293b');
+                text.setAttribute('font-size', '11px');
+                text.setAttribute('font-weight', '600');
+                text.style.pointerEvents = 'none';
+                text.textContent = edge.label;
+
+                labelGroup.appendChild(rect);
+                labelGroup.appendChild(text);
+                edgeGroup.appendChild(labelGroup);
             }
 
-            if (type === 'bezier') {
-                const dx = Math.abs(end.x - start.x) / 2;
-                const dy = Math.abs(end.y - start.y) / 2;
-                let c1 = { ...start }, c2 = { ...end };
+            edgesLayer.appendChild(edgeGroup);
+        });
+    }
 
-                if (sAnchor === 'bottom') c1.y += dy;
-                if (sAnchor === 'top') c1.y -= dy;
-                if (sAnchor === 'right') c1.x += dx;
-                if (sAnchor === 'left') c1.x -= dx;
+    function renderNodes() {
+        const nodesLayer = document.getElementById('nodes-layer');
+        if (!nodesLayer) return;
+        nodesLayer.innerHTML = '';
 
-                if (tAnchor === 'top') c2.y -= dy;
-                if (tAnchor === 'bottom') c2.y += dy;
-                if (tAnchor === 'right') c2.x += dx;
-                if (tAnchor === 'left') c2.x -= dx;
-
-                return `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`;
-            }
-
-            const margin = 40;
-
-            if (sAnchor === 'left' && tAnchor === 'left') {
-                const minX = Math.min(start.x, end.x) - margin;
-                return `M ${start.x} ${start.y} L ${minX} ${start.y} L ${minX} ${end.y} L ${end.x} ${end.y}`;
-            }
-
-            if (sAnchor === 'right' && tAnchor === 'right') {
-                const maxX = Math.max(start.x, end.x) + margin;
-                return `M ${start.x} ${start.y} L ${maxX} ${start.y} L ${maxX} ${end.y} L ${end.x} ${end.y}`;
-            }
-
-            if (sAnchor === 'top' && tAnchor === 'top') {
-                const minY = Math.min(start.y, end.y) - margin;
-                return `M ${start.x} ${start.y} L ${start.x} ${minY} L ${end.x} ${minY} L ${end.x} ${end.y}`;
-            }
-
-            if (sAnchor === 'bottom' && tAnchor === 'bottom') {
-                const maxY = Math.max(start.y, end.y) + margin;
-                return `M ${start.x} ${start.y} L ${start.x} ${maxY} L ${end.x} ${maxY} L ${end.x} ${end.y}`;
-            }
-
-            let midY = (start.y + end.y) / 2;
-            return `M ${start.x} ${start.y} L ${start.x} ${midY} L ${end.x} ${midY} L ${end.x} ${end.y}`;
-        }
-
-        function getPathMidPoint(start, end, pathD) {
-            return {
-                x: (start.x + end.x) / 2,
-                y: (start.y + end.y) / 2
-            };
-        }
-
-        function renderNodes() {
-            const layer = document.getElementById('nodes-layer');
-            layer.innerHTML = '';
-
-            store.nodes.forEach(node => {
-                const isSelected = store.selectedNodeIds.includes(node.id);
-                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                g.setAttribute('transform', `translate(${node.x - node.width/2}, ${node.y - node.height/2})`);
-                g.setAttribute('class', 'cursor-move');
-
-                let strokeColor = '#1e293b';
-                let fillColor = '#ffffff';
-
-                if (node.color === 'indigo') { fillColor = '#eef2ff'; strokeColor = '#4338ca'; }
-                else if (node.color === 'emerald') { fillColor = '#ecfdf5'; strokeColor = '#047857'; }
-                else if (node.color === 'amber') { fillColor = '#fffbeb'; strokeColor = '#b45309'; }
-                else if (node.color === 'cyan') { fillColor = '#ecfeff'; strokeColor = '#0e7490'; }
-                else if (node.color === 'rose') { fillColor = '#fff1f2'; strokeColor = '#be123c'; }
-
-                if (isSelected) {
-                    strokeColor = '#2563eb';
-                }
-
-                const shapeSvg = createNodeShapeSvg(node, fillColor, strokeColor, isSelected);
-                g.appendChild(shapeSvg);
-
-                const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                textGroup.setAttribute('x', node.width / 2);
-                textGroup.setAttribute('y', node.height / 2);
-                textGroup.setAttribute('text-anchor', 'middle');
-                textGroup.setAttribute('dominant-baseline', 'central');
-                textGroup.setAttribute('font-size', node.fontSize || 13);
-                textGroup.setAttribute('font-weight', '500');
-                textGroup.setAttribute('fill', '#0f172a');
-
-                const lines = (node.label || '').split('\n');
-                const lineHeight = (node.fontSize || 13) * 1.25;
-                const startY = (node.height / 2) - ((lines.length - 1) * lineHeight) / 2;
-
-                lines.forEach((lineText, idx) => {
-                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                    tspan.setAttribute('x', node.width / 2);
-                    tspan.setAttribute('y', startY + (idx * lineHeight));
-                    tspan.textContent = lineText;
-                    textGroup.appendChild(tspan);
-                });
-
-                g.appendChild(textGroup);
-
-                const handlePointerDown = (e) => {
-                    const isTouch = e.type === 'touchstart';
-                    if (!isTouch && e.button !== 0) return;
-                    e.stopPropagation();
-
-                    if (e.shiftKey) {
-                        if (store.selectedNodeIds.includes(node.id)) {
-                            store.selectedNodeIds = store.selectedNodeIds.filter(id => id !== node.id);
-                        } else {
-                            store.selectedNodeIds.push(node.id);
-                        }
-                    } else {
-                        if (!store.selectedNodeIds.includes(node.id)) {
-                            store.selectedNodeIds = [node.id];
-                        }
-                    }
-                    store.selectedEdgeId = null;
-                    renderCanvas();
-                    updateInspector();
-
-                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
-                    const startMouseX = clientX;
-                    const startMouseY = clientY;
-
-                    const initialPositions = store.nodes
-                        .filter(n => store.selectedNodeIds.includes(n.id))
-                        .map(n => ({ id: n.id, origX: n.x, origY: n.y }));
-
-                    function onMove(me) {
-                        const curX = me.type.startsWith('touch') ? me.touches[0].clientX : me.clientX;
-                        const curY = me.type.startsWith('touch') ? me.touches[0].clientY : me.clientY;
-                        const dx = (curX - startMouseX) / store.zoom;
-                        const dy = (curY - startMouseY) / store.zoom;
-
-                        initialPositions.forEach(pos => {
-                            const targetNode = store.nodes.find(n => n.id === pos.id);
-                            if (targetNode) {
-                                let newX = pos.origX + dx;
-                                let newY = pos.origY + dy;
-
-                                if (store.snapToGrid) {
-                                    newX = Math.round(newX / store.gridSize) * store.gridSize;
-                                    newY = Math.round(newY / store.gridSize) * store.gridSize;
-                                }
-
-                                targetNode.x = newX;
-                                targetNode.y = newY;
-                            }
-                        });
-
-                        renderCanvas();
-                    }
-
-                    function onUp() {
-                        window.removeEventListener('mousemove', onMove);
-                        window.removeEventListener('mouseup', onUp);
-                        window.removeEventListener('touchmove', onMove);
-                        window.removeEventListener('touchend', onUp);
-                        store.saveState();
-                    }
-
-                    window.addEventListener('mousemove', onMove);
-                    window.addEventListener('mouseup', onUp);
-                    window.addEventListener('touchmove', onMove, { passive: false });
-                    window.addEventListener('touchend', onUp);
-                };
-
-                g.onmousedown = handlePointerDown;
-                g.ontouchstart = handlePointerDown;
-
-                layer.appendChild(g);
-            });
-        }
-
-        function createNodeShapeSvg(node, fill, stroke, isSelected) {
+        store.nodes.forEach(node => {
+            const isSelected = store.selectedNodeIds.includes(node.id);
             const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            const w = node.width;
-            const h = node.height;
-            const sw = isSelected ? (node.strokeWidth || 2) + 1 : (node.strokeWidth || 2);
+            g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+            g.setAttribute('data-node-id', node.id);
+            g.classList.add('cursor-move');
 
-            let element;
+            const shapeSvg = getNodeShapeSvg(node, isSelected);
+            g.appendChild(shapeSvg);
 
-            switch(node.type) {
-                case 'terminal':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    element.setAttribute('x', '0'); element.setAttribute('y', '0');
-                    element.setAttribute('width', w); element.setAttribute('height', h);
-                    element.setAttribute('rx', h / 2);
-                    break;
-                case 'process':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    element.setAttribute('x', '0'); element.setAttribute('y', '0');
-                    element.setAttribute('width', w); element.setAttribute('height', h);
-                    element.setAttribute('rx', '3');
-                    break;
-                case 'decision':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                    element.setAttribute('points', `${w/2},0 ${w},${h/2} ${w/2},${h} 0,${h/2}`);
-                    break;
-                case 'data':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                    element.setAttribute('points', `${w*0.2},0 ${w},0 ${w*0.8},${h} 0,${h}`);
-                    break;
-                case 'loop-start':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                    element.setAttribute('points', `12,0 ${w-12},0 ${w},12 ${w},${h} 0,${h} 0,12`);
-                    break;
-                case 'loop-end':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                    element.setAttribute('points', `0,0 ${w},0 ${w},${h-12} ${w-12},${h} 12,${h} 0,${h-12}`);
-                    break;
-                case 'document':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    element.setAttribute('d', `M 0 0 L ${w} 0 L ${w} ${h*0.8} Q ${w*0.75} ${h*1.1} ${w*0.5} ${h*0.8} Q ${w*0.25} ${h*0.5} 0 ${h*0.9} Z`);
-                    break;
-                case 'subroutine':
-                    const subG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
-                    rect.setAttribute('width', w); rect.setAttribute('height', h);
-                    rect.setAttribute('fill', fill); rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width', sw);
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '0');
+            text.setAttribute('y', '0');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'central');
+            text.setAttribute('fill', '#1e293b');
+            text.setAttribute('font-size', `${node.fontSize || 14}px`);
+            text.setAttribute('font-weight', '500');
+            text.style.pointerEvents = 'none';
+            text.textContent = node.label;
+            g.appendChild(text);
 
-                    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    l1.setAttribute('x1', '12'); l1.setAttribute('y1', '0');
-                    l1.setAttribute('x2', '12'); l1.setAttribute('y2', h);
-                    l1.setAttribute('stroke', stroke); l1.setAttribute('stroke-width', sw);
-
-                    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    l2.setAttribute('x1', w - 12); l2.setAttribute('y1', '0');
-                    l2.setAttribute('x2', w - 12); l2.setAttribute('y2', h);
-                    l2.setAttribute('stroke', stroke); l2.setAttribute('stroke-width', sw);
-
-                    subG.appendChild(rect); subG.appendChild(l1); subG.appendChild(l2);
-                    return subG;
-                case 'connector':
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    element.setAttribute('cx', w/2); element.setAttribute('cy', h/2);
-                    element.setAttribute('r', Math.min(w, h)/2);
-                    break;
-                default:
-                    element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    element.setAttribute('x', '0'); element.setAttribute('y', '0');
-                    element.setAttribute('width', w); element.setAttribute('height', h);
-            }
-
-            element.setAttribute('fill', fill);
-            element.setAttribute('stroke', stroke);
-            element.setAttribute('stroke-width', sw);
-
-            g.appendChild(element);
-            return g;
-        }
-
-        function renderAnchors() {
-            const layer = document.getElementById('anchors-layer');
-            layer.innerHTML = '';
-
-            const anchors = ['top', 'bottom', 'left', 'right'];
-
-            store.nodes.forEach(node => {
-                anchors.forEach(pos => {
-                    const coord = getAnchorCoordinates(node, pos);
-
-                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-                    const hitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    hitCircle.setAttribute('cx', coord.x); hitCircle.setAttribute('cy', coord.y);
-                    hitCircle.setAttribute('r', '22'); hitCircle.setAttribute('fill', 'transparent');
-                    hitCircle.setAttribute('class', 'cursor-crosshair');
-
-                    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    dot.setAttribute('cx', coord.x); dot.setAttribute('cy', coord.y);
-                    dot.setAttribute('r', '5'); dot.setAttribute('fill', '#3b82f6');
-                    dot.setAttribute('stroke', '#ffffff'); dot.setAttribute('stroke-width', '1.5');
-                    dot.setAttribute('class', 'opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity duration-150');
-
-                    g.appendChild(hitCircle);
-                    g.appendChild(dot);
-                    g.setAttribute('class', 'group');
-
-                    const handleAnchorStart = (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-
-                        store.isConnecting = true;
-                        store.connectStart = { nodeId: node.id, anchor: pos, startPt: coord };
-
-                        const tempPath = document.getElementById('temp-edge-path');
-                        tempPath.classList.remove('hidden');
-
-                        function onConnectingMove(me) {
-                            const isTouch = me.type.startsWith('touch');
-                            const clientX = isTouch ? me.touches[0].clientX : me.clientX;
-                            const clientY = isTouch ? me.touches[0].clientY : me.clientY;
-                            const rect = document.getElementById('canvas-container').getBoundingClientRect();
-                            const currentX = (clientX - rect.left - store.panX) / store.zoom;
-                            const currentY = (clientY - rect.top - store.panY) / store.zoom;
-
-                            tempPath.setAttribute('d', `M ${coord.x} ${coord.y} L ${currentX} ${currentY}`);
-                        }
-
-                        function onConnectingUp(me) {
-                            window.removeEventListener('mousemove', onConnectingMove);
-                            window.removeEventListener('mouseup', onConnectingUp);
-                            window.removeEventListener('touchmove', onConnectingMove);
-                            window.removeEventListener('touchend', onConnectingUp);
-
-                            tempPath.classList.add('hidden');
-                            store.isConnecting = false;
-
-                            const isTouch = me.type.startsWith('touch');
-                            const clientX = isTouch ? (me.changedTouches ? me.changedTouches[0].clientX : 0) : me.clientX;
-                            const clientY = isTouch ? (me.changedTouches ? me.changedTouches[0].clientY : 0) : me.clientY;
-
-                            const rect = document.getElementById('canvas-container').getBoundingClientRect();
-                            const dropX = (clientX - rect.left - store.panX) / store.zoom;
-                            const dropY = (clientY - rect.top - store.panY) / store.zoom;
-
-                            const target = findNearestAnchor(dropX, dropY, node.id);
-                            if (target) {
-                                store.edges.push({
-                                    id: store.generateId(),
-                                    sourceId: store.connectStart.nodeId,
-                                    sourceAnchor: store.connectStart.anchor,
-                                    targetId: target.nodeId,
-                                    targetAnchor: target.anchor,
-                                    label: '',
-                                    type: 'orthogonal'
-                                });
-                                store.saveState();
-                                renderCanvas();
-                            }
-                        }
-
-                        window.addEventListener('mousemove', onConnectingMove);
-                        window.addEventListener('mouseup', onConnectingUp);
-                        window.addEventListener('touchmove', onConnectingMove, { passive: false });
-                        window.addEventListener('touchend', onConnectingUp);
-                    };
-
-                    g.onmousedown = handleAnchorStart;
-                    g.ontouchstart = handleAnchorStart;
-
-                    layer.appendChild(g);
-                });
-            });
-        }
-
-        function getAnchorCoordinates(node, position) {
-            switch(position) {
-                case 'top': return { x: node.x, y: node.y - node.height / 2 };
-                case 'bottom': return { x: node.x, y: node.y + node.height / 2 };
-                case 'left': return { x: node.x - node.width / 2, y: node.y };
-                case 'right': return { x: node.x + node.width / 2, y: node.y };
-                default: return { x: node.x, y: node.y };
-            }
-        }
-
-        function findNearestAnchor(x, y, excludeNodeId) {
-            let nearest = null;
-            let minDistance = 30;
-
-            store.nodes.forEach(node => {
-                if (node.id === excludeNodeId) return;
-                ['top', 'bottom', 'left', 'right'].forEach(pos => {
-                    const coord = getAnchorCoordinates(node, pos);
-                    const dist = Math.hypot(coord.x - x, coord.y - y);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        nearest = { nodeId: node.id, anchor: pos };
+            g.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (e.shiftKey) {
+                    if (store.selectedNodeIds.includes(node.id)) {
+                        store.selectedNodeIds = store.selectedNodeIds.filter(id => id !== node.id);
+                    } else {
+                        store.selectedNodeIds.push(node.id);
                     }
-                });
+                } else {
+                    store.selectedNodeIds = [node.id];
+                }
+                store.selectedEdgeId = null;
+                renderCanvas();
+                updateInspector();
             });
 
-            return nearest;
+            nodesLayer.appendChild(g);
+        });
+    }
+
+    function getNodeShapeSvg(node, isSelected) {
+        const hw = node.width / 2;
+        const hh = node.height / 2;
+        const stroke = isSelected ? '#3b82f6' : '#334155';
+        const strokeWidth = isSelected ? 3 : (node.strokeWidth || 2);
+        const fill = node.color === 'white' ? '#ffffff' : node.color;
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        switch (node.type) {
+            case 'terminal': {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', -hw); rect.setAttribute('y', -hh);
+                rect.setAttribute('width', node.width); rect.setAttribute('height', node.height);
+                rect.setAttribute('rx', hh); rect.setAttribute('fill', fill);
+                rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width', strokeWidth);
+                g.appendChild(rect);
+                break;
+            }
+            case 'decision': {
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', `0,${-hh} ${hw},0 0,${hh} ${-hw},0`);
+                poly.setAttribute('fill', fill); poly.setAttribute('stroke', stroke);
+                poly.setAttribute('stroke-width', strokeWidth);
+                g.appendChild(poly);
+                break;
+            }
+            case 'data': {
+                const skew = 12;
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', `${-hw + skew},${-hh} ${hw},${-hh} ${hw - skew},${hh} ${-hw},${hh}`);
+                poly.setAttribute('fill', fill); poly.setAttribute('stroke', stroke);
+                poly.setAttribute('stroke-width', strokeWidth);
+                g.appendChild(poly);
+                break;
+            }
+            case 'connector': {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', 0); circle.setAttribute('cy', 0);
+                circle.setAttribute('r', hw);
+                circle.setAttribute('fill', fill); circle.setAttribute('stroke', stroke);
+                circle.setAttribute('stroke-width', strokeWidth);
+                g.appendChild(circle);
+                break;
+            }
+            default: { // process ほか長方形ベース
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', -hw); rect.setAttribute('y', -hh);
+                rect.setAttribute('width', node.width); rect.setAttribute('height', node.height);
+                rect.setAttribute('rx', '4'); rect.setAttribute('fill', fill);
+                rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width', strokeWidth);
+                g.appendChild(rect);
+                break;
+            }
         }
+        return g;
+    }
 
-        function fitViewToNodes() {
-            if (store.nodes.length === 0) return;
+    function updateInspector() {
+        const container = document.getElementById('inspector-content');
+        if (!container) return;
 
-            const svg = document.getElementById('svg-canvas');
-            if (!svg) return;
-            const rect = svg.getBoundingClientRect();
-            if (rect.width === 0 || rect.height === 0) return;
+        if (store.selectedNodeIds.length === 1) {
+            const node = store.nodes.find(n => n.id === store.selectedNodeIds[0]);
+            if (!node) return;
 
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            store.nodes.forEach(n => {
-                minX = Math.min(minX, n.x - n.width / 2);
-                minY = Math.min(minY, n.y - n.height / 2);
-                maxX = Math.max(maxX, n.x + n.width / 2);
-                maxY = Math.max(maxY, n.y + n.height / 2);
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ラベルテキスト</label>
+                        <input type="text" id="inp-node-label" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs" value="${node.label}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">幅 (W)</label>
+                            <input type="number" id="inp-node-w" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs" value="${node.width}">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">高さ (H)</label>
+                            <input type="number" id="inp-node-h" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs" value="${node.height}">
+                        </div>
+                    </div>
+                    <button id="btn-delete-node" class="w-full py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition">
+                        ノードを削除
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('inp-node-label')?.addEventListener('input', (e) => {
+                node.label = e.target.value;
+                store.saveState();
+                renderCanvas();
+            });
+            document.getElementById('btn-delete-node')?.addEventListener('click', () => {
+                store.deleteSelected();
             });
 
-            const padding = 80;
-            const contentWidth = (maxX - minX) + padding * 2;
-            const contentHeight = (maxY - minY) + padding * 2;
-            const contentCenterX = (minX + maxX) / 2;
-            const contentCenterY = (minY + maxY) / 2;
+        } else if (store.selectedEdgeId) {
+            const edge = store.edges.find(e => e.id === store.selectedEdgeId);
+            if (!edge) return;
 
-            const zoomX = rect.width / contentWidth;
-            const zoomY = rect.height / contentHeight;
-            let targetZoom = Math.min(zoomX, zoomY, 1.1);
-            targetZoom = Math.max(targetZoom, 0.5);
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">線上のラベル (Yes / No など)</label>
+                        <input type="text" id="inp-edge-label" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs" value="${edge.label || ''}">
+                    </div>
+                    <button id="btn-delete-edge" class="w-full py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition">
+                        接続線を削除
+                    </button>
+                </div>
+            `;
 
-            store.zoom = targetZoom;
-            store.panX = (rect.width / 2) - (contentCenterX * store.zoom);
-            store.panY = (rect.height / 2) - (contentCenterY * store.zoom);
+            document.getElementById('inp-edge-label')?.addEventListener('input', (e) => {
+                edge.label = e.target.value;
+                store.saveState();
+                renderCanvas();
+            });
+            document.getElementById('btn-delete-edge')?.addEventListener('click', () => {
+                store.deleteSelected();
+            });
+
+        } else {
+            container.innerHTML = `<p class="text-xs text-slate-400">図形または接続線を選択すると、ここでプロパティを編集できます。</p>`;
         }
+    }
 
-        function addNodeToCanvas(type, x, y) {
-            const shapeInfo = JIS_SHAPES.find(s => s.type === type);
-            const newNode = {
-                id: store.generateId(),
-                type: type,
-                label: shapeInfo ? shapeInfo.defaultLabel : 'ノード',
-                x: x || 400,
-                y: y || 250,
-                width: type === 'connector' ? 44 : 110,
-                height: type === 'connector' ? 44 : 50,
-                fontSize: 13,
-                strokeWidth: 2,
-                color: 'white'
-            };
+    function updateUndoRedoButtons() {
+        const btnUndo = document.getElementById('btn-undo');
+        const btnRedo = document.getElementById('btn-redo');
 
-            store.nodes.push(newNode);
-            store.selectedNodeIds = [newNode.id];
-            store.selectedEdgeId = null;
+        if (btnUndo) btnUndo.disabled = store.historyIndex <= 0;
+        if (btnRedo) btnRedo.disabled = store.historyIndex >= store.history.length - 1;
+    }
+
+    function fitViewToNodes() {
+        store.zoom = 1.0;
+        store.panX = 0;
+        store.panY = 0;
+        renderCanvas();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initPalette();
+        if (!store.loadFromLocalStorage()) {
+            loadDefaultTemplate();
+        } else {
             store.saveState();
             renderCanvas();
             updateInspector();
         }
 
-        function updateInspector() {
-            const container = document.getElementById('inspector-content');
-            container.innerHTML = '';
-
-            if (store.selectedNodeIds.length === 1) {
-                const node = store.nodes.find(n => n.id === store.selectedNodeIds[0]);
-                if (!node) return;
-
-                container.innerHTML = `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">テキスト表示</label>
-                            <textarea id="inp-node-label" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none" rows="3">${node.label}</textarea>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">文字サイズ</label>
-                                <input type="number" id="inp-font-size" value="${node.fontSize || 13}" min="9" max="24" class="w-full text-xs p-1.5 border border-slate-300 rounded-md">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">枠線の太さ</label>
-                                <input type="number" id="inp-stroke-width" value="${node.strokeWidth || 2}" min="1" max="5" class="w-full text-xs p-1.5 border border-slate-300 rounded-md">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-2">カラーテーマ</label>
-                            <div class="grid grid-cols-6 gap-1.5" id="color-picker-group">
-                                ${['white', 'indigo', 'emerald', 'amber', 'cyan', 'rose'].map(c => `
-                                    <button data-color="${c}" class="w-7 h-7 rounded-full border-2 ${node.color === c ? 'border-indigo-600 scale-110' : 'border-slate-300'} transition" style="background-color: ${getColorHex(c)}"></button>
-                                `).join('')}
-                            </div>
-                        </div>
-
-                        <div class="pt-3 border-t border-slate-100">
-                            <button id="btn-delete-node" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg transition border border-rose-200 flex items-center justify-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                削除
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                document.getElementById('inp-node-label').addEventListener('input', (e) => {
-                    node.label = e.target.value;
-                    renderCanvas();
-                });
-                document.getElementById('inp-node-label').addEventListener('change', () => store.saveState());
-
-                document.getElementById('inp-font-size').addEventListener('change', (e) => {
-                    node.fontSize = parseInt(e.target.value) || 13;
-                    renderCanvas();
-                    store.saveState();
-                });
-
-                document.getElementById('inp-stroke-width').addEventListener('change', (e) => {
-                    node.strokeWidth = parseInt(e.target.value) || 2;
-                    renderCanvas();
-                    store.saveState();
-                });
-
-                document.querySelectorAll('#color-picker-group button').forEach(btn => {
-                    btn.onclick = () => {
-                        node.color = btn.dataset.color;
-                        renderCanvas();
-                        updateInspector();
-                        store.saveState();
-                    };
-                });
-
-                document.getElementById('btn-delete-node').onclick = () => store.deleteSelected();
-                return;
-            }
-
-            if (store.selectedNodeIds.length > 1) {
-                container.innerHTML = `
-                    <div class="space-y-4">
-                        <div class="text-xs font-semibold text-slate-700">
-                            ${store.selectedNodeIds.length} 個の要素を選択中
-                        </div>
-                        <div class="pt-2">
-                            <button id="btn-delete-multiple" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg transition border border-rose-200 flex items-center justify-center gap-1">
-                                一括削除
-                            </button>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('btn-delete-multiple').onclick = () => store.deleteSelected();
-                return;
-            }
-
-            if (store.selectedEdgeId) {
-                const edge = store.edges.find(e => e.id === store.selectedEdgeId);
-                if (!edge) return;
-
-                container.innerHTML = `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">分岐ラベルテキスト</label>
-                            <input type="text" id="inp-edge-label" value="${edge.label || ''}" placeholder="例: YES / NO" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            <div class="flex gap-1.5 mt-2">
-                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="YES">YES</button>
-                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="NO">NO</button>
-                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="True">True</button>
-                                <button class="btn-preset-label px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded" data-val="False">False</button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">接続線のスタイル</label>
-                            <select id="sel-edge-type" class="w-full text-xs p-2 border border-slate-300 rounded-md bg-white">
-                                <option value="orthogonal" ${edge.type === 'orthogonal' ? 'selected' : ''}>直角 (JIS標準)</option>
-                                <option value="straight" ${edge.type === 'straight' ? 'selected' : ''}>直線</option>
-                                <option value="bezier" ${edge.type === 'bezier' ? 'selected' : ''}>曲線 (ベジェ)</option>
-                            </select>
-                        </div>
-
-                        <div class="pt-3 border-t border-slate-100">
-                            <button id="btn-delete-edge" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg transition border border-rose-200 flex items-center justify-center gap-1">
-                                接続線を削除
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                document.getElementById('inp-edge-label').addEventListener('input', (e) => {
-                    edge.label = e.target.value;
-                    renderCanvas();
-                });
-                document.getElementById('inp-edge-label').addEventListener('change', () => store.saveState());
-
-                document.querySelectorAll('.btn-preset-label').forEach(btn => {
-                    btn.onclick = () => {
-                        edge.label = btn.dataset.val;
-                        renderCanvas();
-                        updateInspector();
-                        store.saveState();
-                    };
-                });
-
-                document.getElementById('sel-edge-type').addEventListener('change', (e) => {
-                    edge.type = e.target.value;
-                    renderCanvas();
-                    store.saveState();
-                });
-
-                document.getElementById('btn-delete-edge').onclick = () => store.deleteSelected();
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="text-center py-10 text-slate-400">
-                    <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
-                    <p class="text-xs">図形または線を選択すると<br>プロパティを編集できます</p>
-                </div>
-            `;
-        }
-
-        function getColorHex(colorName) {
-            switch(colorName) {
-                case 'indigo': return '#eef2ff';
-                case 'emerald': return '#ecfdf5';
-                case 'amber': return '#fffbeb';
-                case 'cyan': return '#ecfeff';
-                case 'rose': return '#fff1f2';
-                default: return '#ffffff';
-            }
-        }
-
-        function updateUndoRedoButtons() {
-            document.getElementById('btn-undo').disabled = store.historyIndex <= 0;
-            document.getElementById('btn-redo').disabled = store.historyIndex >= store.history.length - 1;
-        }
-
-        function setupViewportInteractions() {
-            const container = document.getElementById('canvas-container');
-            const selectionBox = document.getElementById('selection-box');
-
-            container.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                if (e.ctrlKey || e.metaKey) {
-                    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-                    store.zoom = Math.min(Math.max(store.zoom * zoomFactor, 0.3), 3.0);
-                } else {
-                    if (e.shiftKey) {
-                        store.panX -= e.deltaY;
-                    } else {
-                        store.panY -= e.deltaY;
-                    }
-                }
-                renderCanvas();
-            }, { passive: false });
-
-            const startInteraction = (clientX, clientY, isRightClick) => {
-                const rect = container.getBoundingClientRect();
-                const canvasX = (clientX - rect.left - store.panX) / store.zoom;
-                const canvasY = (clientY - rect.top - store.panY) / store.zoom;
-
-                if (isRightClick) {
-                    store.isPanning = true;
-                    store.panStart = { x: clientX - store.panX, y: clientY - store.panY };
-                } else {
-                    store.isSelecting = true;
-                    store.selectStart = { x: canvasX, y: canvasY };
-                    store.selectedNodeIds = [];
-                    store.selectedEdgeId = null;
-                    selectionBox.setAttribute('x', canvasX);
-                    selectionBox.setAttribute('y', canvasY);
-                    selectionBox.setAttribute('width', 0);
-                    selectionBox.setAttribute('height', 0);
-                    selectionBox.classList.remove('hidden');
-                    renderCanvas();
-                    updateInspector();
-                }
-            };
-
-            container.onmousedown = (e) => {
-                if (e.target === container || e.target.tagName === 'svg') {
-                    startInteraction(e.clientX, e.clientY, e.button === 2 || e.button === 1);
-                }
-            };
-
-            container.oncontextmenu = (e) => e.preventDefault();
-
-            container.ontouchstart = (e) => {
-                if (e.touches.length === 1 && (e.target === container || e.target.tagName === 'svg')) {
-                    startInteraction(e.touches[0].clientX, e.touches[0].clientY, false);
-                } else if (e.touches.length === 2) {
-                    store.isPanning = false;
-                    store.isSelecting = false;
-                    selectionBox.classList.add('hidden');
-                    store.pinchDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                }
-            };
-
-            const handlePointerMove = (e) => {
-                const isTouch = e.type.startsWith('touch');
-                if (isTouch && e.touches.length === 2) {
-                    const newDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    if (store.pinchDist > 0) {
-                        const factor = newDist / store.pinchDist;
-                        store.zoom = Math.min(Math.max(store.zoom * factor, 0.3), 3.0);
-                        renderCanvas();
-                    }
-                    store.pinchDist = newDist;
-                    return;
-                }
-
-                if (store.isPanning) {
-                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
-                    store.panX = clientX - store.panStart.x;
-                    store.panY = clientY - store.panStart.y;
-                    renderCanvas();
-                } else if (store.isSelecting) {
-                    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-                    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
-                    const rect = container.getBoundingClientRect();
-                    const currentX = (clientX - rect.left - store.panX) / store.zoom;
-                    const currentY = (clientY - rect.top - store.panY) / store.zoom;
-
-                    const x = Math.min(store.selectStart.x, currentX);
-                    const y = Math.min(store.selectStart.y, currentY);
-                    const width = Math.abs(currentX - store.selectStart.x);
-                    const height = Math.abs(currentY - store.selectStart.y);
-
-                    selectionBox.setAttribute('x', x);
-                    selectionBox.setAttribute('y', y);
-                    selectionBox.setAttribute('width', width);
-                    selectionBox.setAttribute('height', height);
-
-                    store.selectedNodeIds = store.nodes.filter(n => 
-                        n.x >= x && n.x <= x + width && n.y >= y && n.y <= y + height
-                    ).map(n => n.id);
-
-                    renderCanvas();
-                }
-            };
-
-            window.addEventListener('mousemove', handlePointerMove);
-            window.addEventListener('touchmove', handlePointerMove, { passive: false });
-
-            const handlePointerEnd = () => {
-                store.isPanning = false;
-                if (store.isSelecting) {
-                    store.isSelecting = false;
-                    selectionBox.classList.add('hidden');
-                    updateInspector();
-                }
-                store.pinchDist = 0;
-            };
-
-            window.addEventListener('mouseup', handlePointerEnd);
-            window.addEventListener('touchend', handlePointerEnd);
-
-            container.addEventListener('dragover', (e) => e.preventDefault());
-            container.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const shapeType = e.dataTransfer.getData('shapeType');
-                if (shapeType) {
-                    const rect = container.getBoundingClientRect();
-                    const dropX = (e.clientX - rect.left - store.panX) / store.zoom;
-                    const dropY = (e.clientY - rect.top - store.panY) / store.zoom;
-                    addNodeToCanvas(shapeType, dropX, dropY);
-                }
-            });
-
-            window.addEventListener('keydown', (e) => {
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-                if (e.ctrlKey || e.metaKey) {
-                    if (e.key === 'a' || e.key === 'A') {
-                        e.preventDefault();
-                        store.selectAll();
-                    } else if (e.key === 'c' || e.key === 'C') {
-                        e.preventDefault();
-                        store.copySelected();
-                    } else if (e.key === 'v' || e.key === 'V') {
-                        e.preventDefault();
-                        store.pasteClipboard();
-                    } else if (e.key === 'z' || e.key === 'Z') {
-                        e.preventDefault();
-                        if (e.shiftKey) store.redo();
-                        else store.undo();
-                    } else if (e.key === 'y' || e.key === 'Y') {
-                        e.preventDefault();
-                        store.redo();
-                    }
-                } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                    store.deleteSelected();
-                }
-            });
-        }
-
-        function setupToolbar() {
-            document.getElementById('btn-undo').onclick = () => store.undo();
-            document.getElementById('btn-redo').onclick = () => store.redo();
-
-            document.getElementById('btn-select-all').onclick = () => store.selectAll();
-            document.getElementById('btn-copy').onclick = () => store.copySelected();
-            document.getElementById('btn-paste').onclick = () => store.pasteClipboard();
-
-            // Populate Learning Guide Shapes Section with SVGs & Rules
-            const guideListContainer = document.getElementById('guide-shapes-list');
-            if (guideListContainer) {
-                guideListContainer.innerHTML = '';
-                JIS_SHAPES.forEach(shape => {
-                    const svgIcon = getShapePreviewSvg(shape.type);
-                    const item = document.createElement('div');
-                    item.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3.5';
-                    item.innerHTML = `
-                        <div class="w-10 h-9 bg-white border border-slate-200 rounded-lg flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-                            ${svgIcon}
-                        </div>
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-slate-800 text-xs">${shape.name}</span>
-                                <span class="text-[10px] text-slate-400 font-medium">(${shape.desc})</span>
-                            </div>
-                            <div class="text-[11px] text-slate-600">
-                                <strong>ルール・書き方:</strong> ${shape.rule}
-                            </div>
-                        </div>
-                    `;
-                    guideListContainer.appendChild(item);
-                });
-            }
-
-            // Learning Guide Modal Operations
-            const guideModal = document.getElementById('guide-modal');
-            document.getElementById('btn-open-guide').onclick = () => guideModal.classList.remove('hidden');
-            document.getElementById('guide-modal-close').onclick = () => guideModal.classList.add('hidden');
-            document.getElementById('guide-modal-btn-close').onclick = () => guideModal.classList.add('hidden');
-
-            document.getElementById('btn-zoom-in').onclick = () => {
-                store.zoom = Math.min(store.zoom * 1.15, 3.0);
-                renderCanvas();
-            };
-            document.getElementById('btn-zoom-out').onclick = () => {
-                store.zoom = Math.max(store.zoom / 1.15, 0.3);
-                renderCanvas();
-            };
-
-            document.getElementById('btn-toggle-grid').onclick = () => {
-                store.showGrid = !store.showGrid;
-                renderCanvas();
-            };
-
-            const confirmModal = document.getElementById('confirm-modal');
-            const btnCancel = document.getElementById('modal-btn-cancel');
-            const btnConfirm = document.getElementById('modal-btn-confirm');
-
-            document.getElementById('btn-clear').onclick = () => {
-                confirmModal.classList.remove('hidden');
-            };
-
-            btnCancel.onclick = () => {
-                confirmModal.classList.add('hidden');
-            };
-
-            btnConfirm.onclick = () => {
-                confirmModal.classList.add('hidden');
-                store.nodes = [];
-                store.edges = [];
-                store.selectedNodeIds = [];
-                store.selectedEdgeId = null;
-                store.clearLocalStorage();
-                store.saveState();
-                renderCanvas();
-                updateInspector();
-            };
-
-            document.getElementById('btn-export-json').onclick = () => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-                    nodes: store.nodes,
-                    edges: store.edges
-                }, null, 2));
-                const dlAnchor = document.createElement('a');
-                dlAnchor.setAttribute("href", dataStr);
-                dlAnchor.setAttribute("download", `flowchart_${Date.now()}.json`);
-                document.body.appendChild(dlAnchor);
-                dlAnchor.click();
-                dlAnchor.remove();
-            };
-
-            document.getElementById('file-input-json').onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    try {
-                        const parsed = JSON.parse(evt.target.result);
-                        if (parsed.nodes && parsed.edges) {
-                            store.nodes = parsed.nodes;
-                            store.edges = parsed.edges;
-                            store.selectedNodeIds = [];
-                            store.selectedEdgeId = null;
-                            store.saveState();
-                            renderCanvas();
-                            updateInspector();
-                            fitViewToNodes();
-                        }
-                    } catch (err) {
-                        console.error('JSON import error:', err);
-                    }
-                };
-                reader.readAsText(file);
-            };
-
-            function getCleanSvgString() {
-                const prevNodes = store.selectedNodeIds;
-                const prevEdge = store.selectedEdgeId;
-                store.selectedNodeIds = [];
-                store.selectedEdgeId = null;
-                renderCanvas();
-
-                const anchorsLayer = document.getElementById('anchors-layer');
-                const tempEdgePath = document.getElementById('temp-edge-path');
-                if (anchorsLayer) anchorsLayer.style.display = 'none';
-                if (tempEdgePath) tempEdgePath.style.display = 'none';
-
-                const svg = document.getElementById('svg-canvas');
-                const svgData = new XMLSerializer().serializeToString(svg);
-
-                if (anchorsLayer) anchorsLayer.style.display = '';
-                if (tempEdgePath) tempEdgePath.style.display = '';
-                store.selectedNodeIds = prevNodes;
-                store.selectedEdgeId = prevEdge;
-                renderCanvas();
-
-                return svgData;
-            }
-
-            document.getElementById('btn-export-png').onclick = () => {
-                const svgData = getCleanSvgString();
-                const svg = document.getElementById('svg-canvas');
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-
-                const rect = svg.getBoundingClientRect();
-                canvas.width = rect.width * 2;
-                canvas.height = rect.height * 2;
-
-                img.onload = () => {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.scale(2, 2);
-                    ctx.drawImage(img, 0, 0);
-                    const a = document.createElement('a');
-                    a.download = `flowchart_${Date.now()}.png`;
-                    a.href = canvas.toDataURL('image/png');
-                    a.click();
-                };
-
-                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-            };
-        }
-
-        window.onload = function() {
-            initPalette();
-            setupViewportInteractions();
-            setupToolbar();
-
-            const hasSavedData = store.loadFromLocalStorage();
-            if (hasSavedData) {
-                store.saveState();
-                renderCanvas();
-                updateInspector();
-                fitViewToNodes();
-            } else {
-                loadDefaultTemplate();
-            }
-        };
-    </script>
+        document.getElementById('btn-undo')?.addEventListener('click', () => store.undo());
+        document.getElementById('btn-redo')?.addEventListener('click', () => store.redo());
+        document.getElementById('btn-select-all')?.addEventListener('click', () => store.selectAll());
+        document.getElementById('btn-copy')?.addEventListener('click', () => store.copySelected());
+        document.getElementById('btn-paste')?.addEventListener('click', () => store.pasteClipboard());
+    });
+</script>
 </body>
 </html>
