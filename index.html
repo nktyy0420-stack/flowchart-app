@@ -650,40 +650,49 @@
             path.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
             g.appendChild(path);
 
-            // 2. 線上中央に背景付きでテキスト（Yes/Noなど）を表示
-            if (edge.label && edge.label.trim() !== '') {
-                const midX = (startPt.x + endPt.x) / 2;
-                const midY = (startPt.y + endPt.y) / 2;
+           // 中間地点の計算（折れ線・直線の形状に合わせて実際の線上に配置）
+let labelX, labelY;
 
-                const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+if (edge.type === 'straight') {
+    labelX = (startPt.x + endPt.x) / 2;
+    labelY = (startPt.y + endPt.y) / 2;
+} else {
+    // 直角（クランク）線の場合：折れ曲がった中央の直線の中央に配置
+    const midY = (startPt.y + endPt.y) / 2;
+    // 水平に移動する区間の中央、または垂直区間の中央を判定
+    if (Math.abs(startPt.x - endPt.x) > 10) {
+        labelX = (startPt.x + endPt.x) / 2;
+        labelY = midY;
+    } else {
+        labelX = startPt.x;
+        labelY = midY;
+    }
+}
 
-                const textLen = edge.label.length;
-                const width = Math.max(28, textLen * 11 + 12);
-                const height = 20;
+// ※以下、rect や text の座標指定に midX, midY ではなく labelX, labelY を使用します
 
-                // 白背景 (<rect>)
-                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                rect.setAttribute('x', midX - width / 2);
-                rect.setAttribute('y', midY - height / 2);
-                rect.setAttribute('width', width);
-                rect.setAttribute('height', height);
-                rect.setAttribute('rx', '4');
-                rect.setAttribute('fill', '#ffffff');
-                rect.setAttribute('stroke', isSelected ? '#3b82f6' : '#cbd5e1');
-                rect.setAttribute('stroke-width', '1');
+// 白背景 (<rect>)
+const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+rect.setAttribute('x', labelX - width / 2);
+rect.setAttribute('y', labelY - height / 2);
+rect.setAttribute('width', width);
+rect.setAttribute('height', height);
+rect.setAttribute('rx', '4');
+rect.setAttribute('fill', '#ffffff');
+rect.setAttribute('stroke', isSelected ? '#3b82f6' : '#cbd5e1');
+rect.setAttribute('stroke-width', '1');
 
-                // 線上テキスト (<text>)
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', midX);
-                text.setAttribute('y', midY);
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('dominant-baseline', 'central');
-                text.setAttribute('fill', '#1e293b');
-                text.setAttribute('font-size', '11px');
-                text.setAttribute('font-weight', '600');
-                text.style.pointerEvents = 'none';
-                text.textContent = edge.label;
-
+// 線上テキスト (<text>)
+const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+text.setAttribute('x', labelX);
+text.setAttribute('y', labelY);
+text.setAttribute('text-anchor', 'middle');
+text.setAttribute('dominant-baseline', 'central');
+text.setAttribute('fill', '#1e293b');
+text.setAttribute('font-size', '11px');
+text.setAttribute('font-weight', '600');
+text.style.pointerEvents = 'none';
+text.content = edge.label;
                 labelGroup.appendChild(rect);
                 labelGroup.appendChild(text);
                 g.appendChild(labelGroup);
