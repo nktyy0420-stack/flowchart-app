@@ -288,8 +288,6 @@
 
       // ドラッグ中・接続中状態
       draggingNodeId: null,
-      draggingLabelConnId: null, // ラベルドラッグ追加
-      labelDragStartPos: { x: 0, y: 0 }, // ラベルドラッグ開始位置
       dragOffset: { x: 0, y: 0 },
       isPanning: false,
       panStart: { x: 0, y: 0 },
@@ -421,104 +419,132 @@
 
     // --- STREAMING_CHUNK:Canvas Rendering Engine... ---
 
-    function drawConnection(conn) {
-      const fromNode = state.nodes.find(n => n.id === conn.fromNodeId);
-      const toNode = state.nodes.find(n => n.id === conn.toNodeId);
-      if (!fromNode || !toNode) return;
-
-      const p1 = getAnchors(fromNode)[conn.fromAnchorKey];
-      const p2 = getAnchors(toNode)[conn.toAnchorKey];
-      const isSelected = state.selectedConnectionId === conn.id;
-
-      drawPath(p1, p2, conn.fromAnchorKey, conn.toAnchorKey, isSelected, conn);
-    }
-
-    function calculateLabelPosition(p1, p2, fromKey, toKey, conn) {
-      const midX = (p1.x + p2.x) / 2;
-      const midY = (p1.y + p2.y) / 2;
-
-      let baseX = midX;
-      let baseY = midY;
-
-      // 接続アンカーの方向に基づいて基本配置位置とデフォルトオフセットを調整
-      if (fromKey === 'right' && toKey === 'right') {
-        const outerX = Math.max(p1.x, p2.x) + 30;
-        baseX = outerX;
-        baseY = midY;
-      } else if (fromKey === 'left' && toKey === 'left') {
-        const outerX = Math.min(p1.x, p2.x) - 30;
-        baseX = outerX;
-        baseY = midY;
-      } else if (Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y)) {
-        // 水平方向メインの経路
-        baseX = midX;
-        baseY = p1.y - 12; // 線の上に配置
-      } else {
-        // 垂直方向メインの経路（例：右から出て上に向かうループ線など）
-        baseX = midX + 18; // 線および図形の右側に配置
-        baseY = midY;
-      }
-
-      // 手動ドラッグによるオフセット適用
-      const offX = conn.labelOffsetX || 0;
-      const offY = conn.labelOffsetY || 0;
-
-      return { x: baseX + offX, y: baseY + offY };
-    }
-
-    function drawPath(p1, p2, fromKey, toKey, isSelected, conn) {
-      const x1 = p1.x, y1 = p1.y;
-      const x2 = p2.x, y2 = p2.y;
-      const label = conn ? conn.label : '';
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       ctx.save();
-      ctx.strokeStyle = isSelected ? '#2563eb' : '#475569';
-      ctx.lineWidth = isSelected ? 2.5 : 2;
+      ctx.translate(state.pan.x, state.pan.y);
+      ctx.scale(state.zoom, state.zoom);
 
-      let midX = (x1 + x2) / 2;
+      drawGrid();
+
+      state.connections.forEach(conn => drawConnection(conn));
+
+      if (state.connecting) {
+        const sourceNode = state.nodes.find(n => n.id === state.connecting.sourceNodeId);
+        if (sourceNode) {
+          const startAnchor = getAnchors(sourceNode)[state.connecting.anchorKey];
+          drawPath(startAnchor.x, startAnchor.y, state.connecting.currentX, state.connecting.currentY, false, '');
+        }
+      }
+
+      state.nodes.forEach(node => drawNode(node));
+
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      const gridSize = 25;
+      const width = canvas.width / state.zoom;
+      const height = canvas.height / state.zoom;
+
+      const startX = Math.floor(-state.pan.x / state.zoom / gridSize) * gridSize;
+      const startY = Math.floor(-state.pan.y / state.zoom / gridSize) * gridSize;
+      const endX = startX + width + gridSize * 2;
+      const endY = startY + height + gridSize * 2;
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1 / state.zoom;
 
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-
-      if ((fromKey === 'right' && toKey === 'right') || (fromKey === 'left' && toKey === 'left')) {
-        const outerX = fromKey === 'right' ? Math.max(x1, x2) + 30 : Math.min(x1, x2) - 30;
-        ctx.lineTo(outerX, y1);
-        ctx.lineTo(outerX, y2);
-        ctx.lineTo(x2, y2);
-        midX = outerX;
-      } else {
-        ctx.lineTo(midX, y1);
-        ctx.lineTo(midX, y2);
-        ctx.lineTo(x2, y2);
+      for (let x = startX; x < endX; x += gridSize) {
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+      }
+      for (let y = startY; y < endY; y += gridSize) {
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
       }
       ctx.stroke();
+    }
 
-      const arrowAngle = x2 > midX ? 0 : (x2 < midX ? Math.PI : (y2 > y1 ? Math.PI / 2 : -Math.PI / 2));
-      drawArrowHead(x2, y2, arrowAngle, isSelected);
+    function drawNode(node) {
+      const { x, y, w, h, type, text, id } = node;
+      const isSelected = state.selectedNodeId === id;
+      const isHovered = state.hoverNodeId === id;
 
-      if (label && conn) {
-        const labelPos = calculateLabelPosition(p1, p2, fromKey, toKey, conn);
+      ctx.save();
 
-        ctx.font = '700 11px sans-serif';
-        const textMetrics = ctx.measureText(label);
-        const paddingX = 8;
-        const paddingY = 4;
-        const boxWidth = textMetrics.width + paddingX * 2;
-        const boxHeight = 20;
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.08)';
+      ctx.shadowBlur = isSelected ? 12 : 6;
+      ctx.shadowOffsetY = 3;
 
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = isSelected ? '#2563eb' : '#cbd5e1';
-        ctx.lineWidth = 1.5;
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = isSelected ? '#2563eb' : (isHovered ? '#3b82f6' : '#334155');
+      ctx.lineWidth = isSelected ? 2.5 : 2;
 
-        ctx.beginPath();
-        ctx.roundRect(labelPos.x - boxWidth / 2, labelPos.y - boxHeight / 2, boxWidth, boxHeight, 6);
-        ctx.fill();
-        ctx.stroke();
+      ctx.beginPath();
+      if (type === 'terminal') {
+        const r = h / 2;
+        ctx.arc(x + r, y + r, r, Math.PI / 2, Math.PI * 1.5);
+        ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+        ctx.closePath();
+      } else if (type === 'process') {
+        ctx.roundRect(x, y, w, h, 4);
+      } else if (type === 'decision') {
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.lineTo(x, y + h / 2);
+        ctx.closePath();
+      } else if (type === 'io') {
+        const skew = 16;
+        ctx.moveTo(x + skew, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w - skew, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+      } else if (type === 'loop-start') {
+        const offset = 14;
+        ctx.moveTo(x + offset, y);
+        ctx.lineTo(x + w - offset, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+      } else if (type === 'loop-end') {
+        const offset = 14;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w - offset, y + h);
+        ctx.lineTo(x + offset, y + h);
+        ctx.closePath();
+      }
 
-        ctx.fillStyle = isSelected ? '#1d4ed8' : '#334155';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, labelPos.x, labelPos.y);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.stroke();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '600 12px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      drawNodeText(text, x + w / 2, y + h / 2, w - 16);
+
+      if (isHovered || isSelected) {
+        const anchors = getAnchors(node);
+        Object.keys(anchors).forEach(key => {
+          const a = anchors[key];
+          const isAnchorHovered = state.hoverAnchor && state.hoverAnchor.nodeId === id && state.hoverAnchor.anchorKey === key;
+
+          ctx.beginPath();
+          ctx.arc(a.x, a.y, isAnchorHovered ? 6 : 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = isAnchorHovered ? '#1d4ed8' : '#3b82f6';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        });
       }
 
       ctx.restore();
@@ -622,25 +648,22 @@
 
     // --- STREAMING_CHUNK:Hit Testing & Raycasting Utilities... ---
 
-    function getHitLabel(worldPos) {
-      for (const conn of state.connections) {
-        if (!conn.label) continue;
-        const fromNode = state.nodes.find(n => n.id === conn.fromNodeId);
-        const toNode = state.nodes.find(n => n.id === conn.toNodeId);
-        if (!fromNode || !toNode) continue;
+    function getHitNode(worldPos) {
+      return state.nodes.slice().reverse().find(node => {
+        return worldPos.x >= node.x && worldPos.x <= node.x + node.w &&
+               worldPos.y >= node.y && worldPos.y <= node.y + node.h;
+      });
+    }
 
-        const p1 = getAnchors(fromNode)[conn.fromAnchorKey];
-        const p2 = getAnchors(toNode)[conn.toAnchorKey];
-        const labelPos = calculateLabelPosition(p1, p2, conn.fromAnchorKey, conn.toAnchorKey, conn);
-
-        ctx.font = '700 11px sans-serif';
-        const textMetrics = ctx.measureText(conn.label);
-        const boxWidth = textMetrics.width + 16;
-        const boxHeight = 20;
-
-        if (worldPos.x >= labelPos.x - boxWidth / 2 && worldPos.x <= labelPos.x + boxWidth / 2 &&
-            worldPos.y >= labelPos.y - boxHeight / 2 && worldPos.y <= labelPos.y + boxHeight / 2) {
-          return conn;
+    function getHitAnchor(worldPos) {
+      for (const node of state.nodes) {
+        const anchors = getAnchors(node);
+        for (const key of Object.keys(anchors)) {
+          const a = anchors[key];
+          const dist = Math.hypot(a.x - worldPos.x, a.y - worldPos.y);
+          if (dist <= 8 / state.zoom) {
+            return { nodeId: node.id, anchorKey: key };
+          }
         }
       }
       return null;
@@ -676,6 +699,34 @@
 
     // --- STREAMING_CHUNK:Canvas Event Handlers (Drag, Drop, Click)... ---
 
+    container.addEventListener('dragover', (e) => e.preventDefault());
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData('type');
+      if (!type) return;
+
+      const pos = screenToWorld(e.clientX, e.clientY);
+      createNode(type, pos.x, pos.y);
+    });
+
+    document.querySelectorAll('.palette-item').forEach(item => {
+      // ドラッグイベント
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('type', item.dataset.type);
+      });
+      // クリックでも画面中央に即座に追加できるアクセシビリティ対応
+      item.addEventListener('click', () => {
+        const rect = canvas.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const pos = screenToWorld(centerX, centerY);
+        // 少しずらして重ね配置を避ける
+        const offsetX = (Math.random() - 0.5) * 40;
+        const offsetY = (Math.random() - 0.5) * 40;
+        createNode(item.dataset.type, pos.x + offsetX, pos.y + offsetY);
+      });
+    });
+
     canvas.addEventListener('mousedown', (e) => {
       const pos = screenToWorld(e.clientX, e.clientY);
 
@@ -686,18 +737,6 @@
         return;
       }
 
-      // 1. ラベルのドラッグ判定
-      const hitLabelConn = getHitLabel(pos);
-      if (hitLabelConn) {
-        state.selectedConnectionId = hitLabelConn.id;
-        state.selectedNodeId = null;
-        state.draggingLabelConnId = hitLabelConn.id;
-        state.labelDragStartPos = { x: pos.x, y: pos.y };
-        requestAnimationFrame(render);
-        return;
-      }
-
-      // 2. アンカーの接続判定
       const anchorHit = getHitAnchor(pos);
       if (anchorHit) {
         state.connecting = {
@@ -710,7 +749,6 @@
         return;
       }
 
-      // 3. ノードのドラッグ判定
       const nodeHit = getHitNode(pos);
       if (nodeHit) {
         state.selectedNodeId = nodeHit.id;
@@ -721,7 +759,6 @@
         return;
       }
 
-      // 4. 接続線の選択判定
       const connHit = getHitConnection(pos);
       if (connHit) {
         state.selectedConnectionId = connHit.id;
@@ -755,19 +792,6 @@
         return;
       }
 
-      if (state.draggingLabelConnId) {
-        const conn = state.connections.find(c => c.id === state.draggingLabelConnId);
-        if (conn) {
-          const dx = pos.x - state.labelDragStartPos.x;
-          const dy = pos.y - state.labelDragStartPos.y;
-          conn.labelOffsetX = (conn.labelOffsetX || 0) + dx;
-          conn.labelOffsetY = (conn.labelOffsetY || 0) + dy;
-          state.labelDragStartPos = { x: pos.x, y: pos.y };
-          requestAnimationFrame(render);
-        }
-        return;
-      }
-
       if (state.draggingNodeId) {
         const node = state.nodes.find(n => n.id === state.draggingNodeId);
         if (node) {
@@ -798,9 +822,7 @@
             fromAnchorKey: state.connecting.anchorKey,
             toNodeId: targetAnchor.nodeId,
             toAnchorKey: targetAnchor.anchorKey,
-            label: '',
-            labelOffsetX: 0,
-            labelOffsetY: 0
+            label: ''
           };
           state.connections.push(newConnection);
           state.selectedConnectionId = newConnection.id;
@@ -808,11 +830,6 @@
         }
         state.connecting = null;
         requestAnimationFrame(render);
-      }
-
-      if (state.draggingLabelConnId) {
-        state.draggingLabelConnId = null;
-        saveHistory();
       }
 
       if (state.draggingNodeId) {
@@ -823,12 +840,6 @@
 
     canvas.addEventListener('dblclick', (e) => {
       const pos = screenToWorld(e.clientX, e.clientY);
-
-      const labelConnHit = getHitLabel(pos);
-      if (labelConnHit) {
-        openEditModal('connection', labelConnHit);
-        return;
-      }
 
       const nodeHit = getHitNode(pos);
       if (nodeHit) {
