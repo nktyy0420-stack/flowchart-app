@@ -1,79 +1,287 @@
-<!-- ... existing code ... -->
-    <!-- SVG Render Canvas -->
-    <svg id="svg-canvas" class="w-full h-full absolute inset-0">
-        <defs>
-            <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e293b"/>
-            </marker>
-            <marker id="arrowhead-selected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6"/>
-            </marker>
-        </defs>
+<!-- View Controls -->
+    <button id="btn-zoom-in" title="拡大 (+)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+    </button>
+    <button id="btn-zoom-out" title="縮小 (-)" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
+    </button>
+
+    <div class="h-5 w-px bg-slate-200 mx-1"></div>
+
+    <!-- Grid Toggle -->
+    <button id="btn-toggle-grid" title="グリッド切替" class="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+    </button>
+
+    <div class="h-5 w-px bg-slate-200 mx-1"></div>
+
+    <!-- Clear Canvas -->
+    <button id="btn-clear" title="キャンバスクリア" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    </button>
+
+    <!-- File IO -->
+    <div class="flex items-center gap-1.5 ml-2">
+        <span id="autosave-status" class="text-[11px] text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/60 flex items-center gap-1 font-medium transition-all duration-200">
+            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            自動保存済み
+        </span>
+
+        <button id="btn-export-json" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+            名前を付けて保存
+        </button>
+        <label id="btn-import-json" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition cursor-pointer">
+            ファイルを開く
+            <input type="file" id="file-input-json" accept=".json" class="hidden">
+        </label>
+        <button id="btn-export-png" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-medium transition shadow-sm flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            PNG出力
+        </button>
+    </div>
+</div>
+</header>
+
+<!-- Main Content Area -->
+<div class="flex-1 flex overflow-hidden relative min-h-0">
+    
+    <!-- Left Sidebar: JIS Node Palette -->
+    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-10 shrink-0 shadow-sm">
+        <div class="p-3 border-b border-slate-100 bg-slate-50">
+            <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">JIS 記号パレット</h2>
+            <p class="text-[11px] text-slate-400 mt-0.5">タップまたはドラッグで追加</p>
+        </div>
         
-        <g id="viewport-group">
-            <!-- Layer 1: Edges / Connection Lines -->
-            <g id="edges-layer"></g>
-            <!-- Layer 2: Temporary Connecting Line while dragging -->
-            <path id="temp-edge-path" d="" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,4" class="hidden"></path>
-            <!-- Layer 3: Nodes -->
-            <g id="nodes-layer"></g>
-            <!-- Layer 4: Interactive Anchor Highlights -->
-            <g id="anchors-layer"></g>
-            <!-- Layer 5: Selection Box (Rubberband) -->
-            <rect id="selection-box" class="selection-box hidden" x="0" y="0" width="0" height="0"></rect>
-        </g>
-    </svg>
-<!-- ... existing code ... -->
-  <script>
+        <div class="flex-1 overflow-y-auto p-3 space-y-2.5" id="palette-container">
+            <!-- Palette items will be generated by JS -->
+        </div>
+    </aside>
 
-    // 直角折れ線パス・矢印・分岐ラベル描画
-    function drawPath(x1, y1, x2, y2, isSelected, label) {
-      ctx.save();
-      ctx.strokeStyle = isSelected ? '#2563eb' : '#475569';
-      ctx.lineWidth = isSelected ? 2.5 : 2;
+    <!-- Center Workspace / Canvas -->
+    <main id="canvas-container" class="flex-1 relative overflow-hidden canvas-bg cursor-grab active:cursor-grabbing select-none">
+        
+        <!-- Floating Navigation Controls overlay -->
+        <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 rounded-lg p-1.5 shadow-md flex items-center gap-1 z-10">
+            <span id="zoom-level-text" class="text-xs font-mono font-medium text-slate-600 px-2">100%</span>
+        </div>
 
-      // 直角ルーティング座標計算
-      const midX = (x1 + x2) / 2;
+        <!-- SVG Render Canvas -->
+        <svg id="svg-canvas" class="w-full h-full absolute inset-0">
+            <defs>
+                <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e293b"/>
+                </marker>
+                <marker id="arrowhead-selected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6"/>
+                </marker>
+            </defs>
+            
+            <g id="viewport-group">
+                <!-- Layer 1: Edges / Connection Lines -->
+                <g id="edges-layer"></g>
+                <!-- Layer 2: Temporary Connecting Line while dragging -->
+                <path id="temp-edge-path" d="" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,4" class="hidden"></path>
+                <!-- Layer 3: Nodes -->
+                <g id="nodes-layer"></g>
+                <!-- Layer 4: Interactive Anchor Highlights -->
+                <g id="anchors-layer"></g>
+                <!-- Layer 5: Selection Box (Rubberband) -->
+                <rect id="selection-box" class="selection-box hidden" x="0" y="0" width="0" height="0"></rect>
+            </g>
+        </svg>
+    </main>
 
-      // 1. まず接続線（ライン）を描画
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(midX, y1);
-      ctx.lineTo(midX, y2);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
+    <!-- Right Inspector Sidebar -->
+    <aside class="w-72 bg-white border-l border-slate-200 flex flex-col z-10 shrink-0 shadow-sm" id="inspector-panel">
+        <div class="p-3 border-b border-slate-100 bg-slate-50">
+            <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">プロパティ</h2>
+            <p class="text-[11px] text-slate-400 mt-0.5">選択された要素の編集</p>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-4 space-y-5" id="inspector-content">
+            <!-- Inspector form dynamically rendered by JS -->
+        </div>
+    </aside>
 
-      // 終点矢印描画
-      const arrowAngle = x2 > midX ? 0 : (x2 < midX ? Math.PI : (y2 > y1 ? Math.PI / 2 : -Math.PI / 2));
-      drawArrowHead(x2, y2, arrowAngle, isSelected);
+</div>
 
-      // 2. 線の上に重ねてテキストと白背景ボックスを出力
-      if (label) {
-        const midY = (y1 + y2) / 2;
+<script>
+    function renderCanvas() {
+        const viewport = document.getElementById('viewport-group');
+        if (!viewport) return;
+        viewport.setAttribute('transform', `translate(${store.panX}, ${store.panY}) scale(${store.zoom})`);
 
-        ctx.font = '700 11px sans-serif';
-        const textMetrics = ctx.measureText(label);
-        const paddingX = 8;
-        const paddingY = 4;
-        const boxWidth = textMetrics.width + paddingX * 2;
-        const boxHeight = 20;
+        const zoomText = document.getElementById('zoom-level-text');
+        if (zoomText) zoomText.textContent = `${Math.round(store.zoom * 100)}%`;
 
-        // 線を覆い隠すための背景カード（丸角）
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = isSelected ? '#2563eb' : '#cbd5e1';
-        ctx.lineWidth = 1.5;
+        const container = document.getElementById('canvas-container');
+        if (container) {
+            if (store.showGrid) {
+                container.classList.remove('no-grid');
+            } else {
+                container.classList.add('no-grid');
+            }
+        }
 
-        ctx.beginPath();
-        ctx.roundRect(midX - boxWidth / 2, midY - boxHeight / 2, boxWidth, boxHeight, 6);
-        ctx.fill();
-        ctx.stroke();
+        renderEdges();
+        renderNodes();
+    }
 
-        // 線の上に文字（テキスト）を描画
-        ctx.fillStyle = isSelected ? '#1d4ed8' : '#334155';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, midX, midY + 0.5);
-      }
+    function renderEdges() {
+        const edgesLayer = document.getElementById('edges-layer');
+        if (!edgesLayer) return;
+        edgesLayer.innerHTML = '';
+
+        store.edges.forEach(edge => {
+            const sourceNode = store.nodes.find(n => n.id === edge.sourceId);
+            const targetNode = store.nodes.find(n => n.id === edge.targetId);
+            if (!sourceNode || !targetNode) return;
+
+            const p1 = getAnchorPosition(sourceNode, edge.sourceAnchor || 'bottom');
+            const p2 = getAnchorPosition(targetNode, edge.targetAnchor || 'top');
+            const isSelected = store.selectedEdgeId === edge.id;
+
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'cursor-pointer');
+            g.addEventListener('click', (e) => {
+                e.stopPropagation();
+                store.selectedEdgeId = edge.id;
+                store.selectedNodeIds = [];
+                renderCanvas();
+                updateInspector();
+            });
+
+            // 折れ線（クランク）の経路計算
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2;
+            const pathD = `M ${p1.x} ${p1.y} L ${midX} ${p1.y} L ${midX} ${p2.y} L ${p2.x} ${p2.y}`;
+
+            // クリック用の太い透明パス
+            const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            hitPath.setAttribute('d', pathD);
+            hitPath.setAttribute('fill', 'none');
+            hitPath.setAttribute('stroke', 'transparent');
+            hitPath.setAttribute('stroke-width', '16');
+
+            // 描画用の線パス
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathD);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', isSelected ? '#3b82f6' : '#1e293b');
+            path.setAttribute('stroke-width', isSelected ? '2.5' : '2');
+            path.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
+
+            g.appendChild(hitPath);
+            g.appendChild(path);
+
+            // 線上のラベル表示（白い背景ボックス＋文字）
+            if (edge.label && edge.label.trim() !== '') {
+                const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                // 文字サイズの動的計測用の仮要素設定
+                const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                labelText.setAttribute('x', midX);
+                labelText.setAttribute('y', midY);
+                labelText.setAttribute('fill', isSelected ? '#1d4ed8' : '#334155');
+                labelText.setAttribute('font-size', '11');
+                labelText.setAttribute('font-weight', '700');
+                labelText.setAttribute('text-anchor', 'middle');
+                labelText.setAttribute('dominant-baseline', 'central');
+                labelText.textContent = edge.label;
+
+                // 背景用白角丸矩形
+                const approxWidth = Math.max(20, edge.label.length * 8 + 12);
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', midX - approxWidth / 2);
+                rect.setAttribute('y', midY - 10);
+                rect.setAttribute('width', approxWidth);
+                rect.setAttribute('height', '20');
+                rect.setAttribute('rx', '4');
+                rect.setAttribute('fill', '#ffffff');
+                rect.setAttribute('stroke', isSelected ? '#3b82f6' : '#cbd5e1');
+                rect.setAttribute('stroke-width', '1.5');
+
+                labelGroup.appendChild(rect);
+                labelGroup.appendChild(labelText);
+                g.appendChild(labelGroup);
+            }
+
+            edgesLayer.appendChild(g);
+        });
+    }
+
+    function renderNodes() {
+        const nodesLayer = document.getElementById('nodes-layer');
+        if (!nodesLayer) return;
+        nodesLayer.innerHTML = '';
+
+        store.nodes.forEach(node => {
+            const isSelected = store.selectedNodeIds.includes(node.id);
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'cursor-move');
+            g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+
+            // ノード形状のレンダリング
+            const shapePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shapePath.setAttribute('d', getNodePathD(node.type, node.width, node.height));
+            shapePath.setAttribute('fill', node.color || '#ffffff');
+            shapePath.setAttribute('stroke', isSelected ? '#3b82f6' : '#334155');
+            shapePath.setAttribute('stroke-width', isSelected ? '2.5' : (node.strokeWidth || '2'));
+
+            if (isSelected) {
+                shapePath.setAttribute('filter', 'drop-shadow(0 4px 6px rgba(59, 130, 246, 0.25))');
+            }
+
+            g.appendChild(shapePath);
+
+            // テキスト描画
+            if (node.label) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', node.width / 2);
+                text.setAttribute('y', node.height / 2);
+                text.setAttribute('fill', '#1e293b');
+                text.setAttribute('font-size', node.fontSize || '13');
+                text.setAttribute('font-weight', '500');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'central');
+                text.textContent = node.label;
+                g.appendChild(text);
+            }
+
+            nodesLayer.appendChild(g);
+        });
+    }
+
+    function getNodePathD(type, w, h) {
+        switch (type) {
+            case 'terminal':
+                const r = h / 2;
+                return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w - r} ${h} L ${r} ${h} A ${r} ${r} 0 0 1 ${r} 0 Z`;
+            case 'decision':
+                return `M ${w / 2} 0 L ${w} ${h / 2} L ${w / 2} ${h} L 0 ${h / 2} Z`;
+            case 'data':
+                const skew = 15;
+                return `M ${skew} 0 L ${w} 0 L ${w - skew} ${h} L 0 ${h} Z`;
+            case 'process':
+            default:
+                return `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
+        }
+    }
+
+    function getAnchorPosition(node, anchor) {
+        const x = node.x;
+        const y = node.y;
+        const w = node.width;
+        const h = node.height;
+
+        switch (anchor) {
+            case 'top': return { x: x + w / 2, y: y };
+            case 'right': return { x: x + w, y: y + h / 2 };
+            case 'bottom': return { x: x + w / 2, y: y + h };
+            case 'left': return { x: x, y: y + h / 2 };
+            default: return { x: x + w / 2, y: y + h / 2 };
+        }
+    }
 
       ctx.restore();
     }
